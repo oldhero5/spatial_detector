@@ -5,6 +5,12 @@ on:
     tags:
       - 'v*'  # Push events to matching v*, i.e. v1.0, v20.15.10
 
+# Add permissions for creating releases
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
