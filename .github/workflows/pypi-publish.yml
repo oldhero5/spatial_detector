@@ -50,8 +50,17 @@ jobs:
         password: ${{ secrets.PYPI_API_TOKEN }}
         skip_existing: true
     
-    - name: Extract release notes
-      id: extract_release_notes
+    - name: Read release notes file
+      id: release_notes
+      if: hashFiles('RELEASE_NOTES.md') != ''
+      run: |
+        NOTES=$(cat RELEASE_NOTES.md)
+        echo "NOTES<<EOF" >> $GITHUB_ENV
+        echo "$NOTES" >> $GITHUB_ENV
+        echo "EOF" >> $GITHUB_ENV
+    
+    - name: Extract changelog notes
+      id: extract_changelog
       run: |
         # Check if version-specific release notes exist in CHANGELOG.md
         if grep -q "## \[$VERSION\]" CHANGELOG.md; then
@@ -60,13 +69,6 @@ jobs:
           echo "CHANGELOG_NOTES<<EOF" >> $GITHUB_ENV
           echo "$NOTES" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-        fi
-        
-        # Check if RELEASE_NOTES.md exists
-        if [ -f RELEASE_NOTES.md ]; then
-          echo "HAS_RELEASE_NOTES=true" >> $GITHUB_ENV
-        else
-          echo "HAS_RELEASE_NOTES=false" >> $GITHUB_ENV
         fi
     
     - name: Create GitHub Release
@@ -78,7 +80,7 @@ jobs:
         body: |
           # Spatial Detector v${{ env.VERSION }}
           
-          ${{ env.HAS_RELEASE_NOTES == 'true' && format('{0}', runner.os == 'Linux' && steps.extract_release_notes.outputs.notes || cat RELEASE_NOTES.md) || format('Release of version {0}', env.VERSION) }}
+          ${{ hashFiles('RELEASE_NOTES.md') != '' && env.NOTES || format('Release of version {0}', env.VERSION) }}
           
           ## What's Changed
           
