@@ -1,7 +1,12 @@
-.venv/
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
+*$py.class
+
+# C extensions
 *.so
+
+# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -18,13 +23,61 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-.DS_Store
+MANIFEST
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environments
 .env
 .venv
 env/
 venv/
 ENV/
-data/models/*.pt
-data/videos/*
+env.bak/
+venv.bak/
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# Model weights and calibration files
+*.pt
+*.pth
+*.json
+calibration_*.json
+depth_calibration.json
+
+# Media files
 *.mp4
-!data/videos/.gitkeep
+*.avi
+*.jpg
+*.png
+
+# Logs
+*.log
