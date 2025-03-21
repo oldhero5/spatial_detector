@@ -1,0 +1,87 @@
+name: Publish Python Package
+
+on:
+  push:
+    tags:
+      - 'v*'  # Push events to matching v*, i.e. v1.0, v20.15.10
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0  # Fetch all history for changelog generation
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+    
+    - name: Install UV
+      run: |
+        curl -sSf https://install.ultraviolet.rs | sh
+        export PATH=$HOME/.cargo/bin:$PATH
+        which uv
+    
+    - name: Install dependencies
+      run: |
+        export PATH=$HOME/.cargo/bin:$PATH
+        uv pip install build hatchling twine
+    
+    - name: Extract version from tag
+      id: get_version
+      run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
+    
+    - name: Update version in pyproject.toml
+      run: |
+        sed -i "s/version = \"[0-9]*\.[0-9]*\.[0-9]*\"/version = \"$VERSION\"/" pyproject.toml
+        cat pyproject.toml | grep version
+    
+    - name: Build package
+      run: |
+        export PATH=$HOME/.cargo/bin:$PATH
+        python -m build
+    
+    - name: Publish package
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
+        skip_existing: true
+    
+    - name: Extract release notes
+      id: extract_release_notes
+      run: |
+        # Check if version-specific release notes exist in CHANGELOG.md
+        if grep -q "## \[$VERSION\]" CHANGELOG.md; then
+          # Extract the release notes for this version from CHANGELOG.md
+          NOTES=$(awk "/## \[$VERSION\]/,/## \[/" CHANGELOG.md | sed '$d' | sed '1d')
+          echo "CHANGELOG_NOTES<<EOF" >> $GITHUB_ENV
+          echo "$NOTES" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+        fi
+        
+        # Check if RELEASE_NOTES.md exists
+        if [ -f RELEASE_NOTES.md ]; then
+          echo "HAS_RELEASE_NOTES=true" >> $GITHUB_ENV
+        else
+          echo "HAS_RELEASE_NOTES=false" >> $GITHUB_ENV
+        fi
+    
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          dist/*.whl
+          dist/*.tar.gz
+        body: |
+          # Spatial Detector v${{ env.VERSION }}
+          
+          ${{ env.HAS_RELEASE_NOTES == 'true' && format('{0}', runner.os == 'Linux' && steps.extract_release_notes.outputs.notes || cat RELEASE_NOTES.md) || format('Release of version {0}', env.VERSION) }}
+          
+          ## What's Changed
+          
+          ${{ env.CHANGELOG_NOTES }}
+          
+          Full Changelog: https://github.com/${{ github.repository }}/commits/v${{ env.VERSION }}
