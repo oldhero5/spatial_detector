@@ -7,17 +7,11 @@ import time
 import numpy as np
 import torch
 
-# Add parent directory to path to import modules
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from src.detection.yolo_detector import YOLODetector
-from src.depth.midas_depth import MiDaSDepthEstimator
-from src.projection.camera_model import PinholeCamera
-from src.visualization.visualizer import Visualizer
-
-# Import our new modules
-from src.projection.spatial_mapper import SpatialMap
-from src.depth.depth_calibration import DepthCalibrator
+from spatial_detector.detection import YOLODetector
+from spatial_detector.depth import MiDaSDepthEstimator
+from spatial_detector.projection import PinholeCamera
+from spatial_detector.visualization import Visualizer
+from spatial_detector.mapping import SpatialMap, DepthCalibrator
 
 def main():
     parser = argparse.ArgumentParser(description="3D Object Detection with Spatial Mapping")
