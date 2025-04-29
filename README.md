@@ -59,6 +59,7 @@ The project uses YOLOv8 for object detection and MiDaS for depth estimation, wit
 - **Depth Calibration**: Tools for accurate real-world measurements
 - **Interactive Controls**: Toggle visualizations and adjust settings in real-time
 - **Persistence and Tracking**: Follow objects as they move through your space
+- **Spatial Mapping**: Create top-down views of your environment with detected objects
 - **WebSocket/Socket.IO**: Real-time communication between client and server
 - **QR Code Pairing**: Simple device connection for mobile devices
 
@@ -650,6 +651,8 @@ For detailed release management instructions, see [RELEASE_GUIDE.md](RELEASE_GUI
 - **CUDA errors**: If using an NVIDIA GPU, ensure your CUDA drivers are up to date.
 
 - **Web package installation fails**: If you see errors related to "pywebrtc not found", use `uv pip install -e ".[web]"` with our latest version which removes this dependency.
+
+- **Missing modules**: If you encounter "ImportError: cannot import name 'SpatialMap'" or similar, ensure you're using the latest version which includes all required modules.
 
 #### Runtime Issues
 
