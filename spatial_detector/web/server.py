@@ -28,7 +28,7 @@ class WebServer:
     def __init__(
         self, 
         host: str = "0.0.0.0", 
-        port: int = 5000,
+        port: int = 5011,
         static_folder: str = None,
         template_folder: str = None
     ):

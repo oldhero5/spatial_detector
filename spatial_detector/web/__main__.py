@@ -19,8 +19,8 @@ def main():
     parser.add_argument(
         "--port",
         type=int,
-        default=5000,
-        help="Port to run the server on (default: 5000)",
+        default=5011,
+        help="Port to run the server on (default: 5011)",
     )
     parser.add_argument(
         "--debug",

@@ -182,7 +182,7 @@ spatial-detector-web --debug
 spatial-detector-web --templates /path/to/templates --static /path/to/static
 ```
 
-The web interface is accessible at `http://localhost:5000` by default (or the host:port you specify).
+The web interface is accessible at `http://localhost:5011` by default (or the host:port you specify).
 
 ### Web Interface
 
