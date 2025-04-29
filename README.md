@@ -208,7 +208,7 @@ To use your iPhone as a camera source:
 5. Follow the prompts on your iPhone to allow camera access
 6. Start using your iPhone as a high-quality camera source
 
-The iPhone integration uses WebRTC for low-latency, high-quality video streaming.
+The iPhone integration uses web technologies for low-latency, high-quality video streaming.
 
 #### 3D Visualization
 
@@ -648,6 +648,8 @@ For detailed release management instructions, see [RELEASE_GUIDE.md](RELEASE_GUI
 - **PyTorch installation fails**: Make sure you're installing the correct version for your system. Visit [PyTorch's installation page](https://pytorch.org/get-started/locally/) for system-specific instructions.
 
 - **CUDA errors**: If using an NVIDIA GPU, ensure your CUDA drivers are up to date.
+
+- **Web package installation fails**: If you see errors related to "pywebrtc not found", use `uv pip install -e ".[web]"` with our latest version which removes this dependency.
 
 #### Runtime Issues
 
