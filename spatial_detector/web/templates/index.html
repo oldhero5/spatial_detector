@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spatial Detector</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Spatial Detector</h1>
+            <div class="connection-status">
+                <span id="status-indicator" class="status-indicator"></span>
+                <span id="status-text">Disconnected</span>
+            </div>
+        </header>
+
+        <main>
+            <div class="view-container">
+                <div class="camera-view">
+                    <div id="video-container">
+                        <video id="local-video" autoplay playsinline muted></video>
+                        <img id="stream-view" alt="Stream View">
+                        <div class="video-overlay" id="overlay">
+                            <div id="detection-info"></div>
+                            <div id="calibration-ui" class="hidden">
+                                <div class="crosshair"></div>
+                                <div class="calibration-instructions">
+                                    <p>Position the crosshair on a reference object and press SPACE</p>
+                                    <p>Use + and - keys to adjust distance</p>
+                                    <p>Current distance: <span id="calib-distance">1.0</span>m</p>
+                                </div>
+                            </div>
+                            <div class="fps-counter" id="fps-counter">0 FPS</div>
+                        </div>
+                    </div>
+                    <div class="camera-controls">
+                        <button id="camera-toggle">Start Camera</button>
+                        <button id="stream-connect" disabled>Connect to iPhone</button>
+                        <select id="camera-select" disabled>
+                            <option value="">Select Camera</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="map-view">
+                    <div id="map-container"></div>
+                    <div class="map-controls">
+                        <button id="toggle-map">Show Map</button>
+                        <button id="reset-view">Reset View</button>
+                        <button id="export-model" disabled>Export 3D Model</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h2>Control Panel</h2>
+                
+                <div class="control-section">
+                    <h3>Visualization</h3>
+                    <div class="control-row">
+                        <label>
+                            <input type="checkbox" id="toggle-labels" checked>
+                            Show Labels
+                        </label>
+                    </div>
+                    <div class="control-row">
+                        <label>
+                            <input type="checkbox" id="toggle-depth" checked>
+                            Show Depth Map
+                        </label>
+                    </div>
+                    <div class="control-row">
+                        <label>
+                            <input type="checkbox" id="toggle-grid">
+                            Show Grid
+                        </label>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>Calibration</h3>
+                    <div class="control-row">
+                        <button id="start-calibration">Start Calibration</button>
+                        <button id="save-calibration" disabled>Save Calibration</button>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>Project</h3>
+                    <div class="control-row">
+                        <button id="new-project">New Project</button>
+                        <button id="save-project">Save Project</button>
+                    </div>
+                    <div class="control-row">
+                        <button id="load-project">Load Project</button>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>iPhone Connection</h3>
+                    <div class="qr-code-container">
+                        <div id="qr-code"></div>
+                        <p>Scan with your iPhone to connect</p>
+                    </div>
+                    <div class="control-row">
+                        <button id="generate-qr">Generate Connection Code</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <div class="setup-wizard hidden" id="setup-wizard">
+            <div class="wizard-container">
+                <div class="wizard-header">
+                    <h2>Welcome to Spatial Detector</h2>
+                    <button class="close-button" id="close-wizard">×</button>
+                </div>
+                <div class="wizard-content">
+                    <div class="wizard-step" data-step="1">
+                        <h3>Step 1: Choose Your Input Source</h3>
+                        <div class="input-option">
+                            <button data-source="webcam" class="source-button">
+                                <div class="icon">💻</div>
+                                <span>Computer Webcam</span>
+                            </button>
+                            <button data-source="iphone" class="source-button">
+                                <div class="icon">📱</div>
+                                <span>iPhone Camera</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="wizard-step hidden" data-step="2-webcam">
+                        <h3>Step 2: Select Webcam</h3>
+                        <select id="wizard-camera-select">
+                            <option value="">Loading cameras...</option>
+                        </select>
+                        <button id="wizard-test-webcam">Test Camera</button>
+                        <div id="wizard-webcam-preview"></div>
+                    </div>
+                    <div class="wizard-step hidden" data-step="2-iphone">
+                        <h3>Step 2: Connect iPhone</h3>
+                        <div id="wizard-qr-code"></div>
+                        <p>Scan this QR code with your iPhone camera</p>
+                        <p>Or open this link on your iPhone: <span id="wizard-direct-link"></span></p>
+                    </div>
+                    <div class="wizard-step hidden" data-step="3">
+                        <h3>Step 3: Calibration (Optional)</h3>
+                        <p>For accurate distance measurements, you can calibrate the system:</p>
+                        <ol>
+                            <li>Place an object at a known distance from the camera</li>
+                            <li>Use the crosshair to select the object</li>
+                            <li>Enter the actual distance to the object</li>
+                        </ol>
+                        <button id="wizard-skip-calibration">Skip Calibration</button>
+                        <button id="wizard-start-calibration">Start Calibration</button>
+                    </div>
+                    <div class="wizard-step hidden" data-step="4">
+                        <h3>Setup Complete!</h3>
+                        <p>Your Spatial Detector is now ready to use.</p>
+                        <button id="wizard-finish">Start Using Spatial Detector</button>
+                    </div>
+                </div>
+                <div class="wizard-footer">
+                    <button id="wizard-prev" disabled>Previous</button>
+                    <div class="wizard-progress">
+                        <span class="active"></span>
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                    <button id="wizard-next">Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/map-view.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/camera.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/wizard.js') }}"></script>
+</body>
+</html>

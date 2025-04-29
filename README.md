@@ -14,6 +14,7 @@ A Python package for 3D object detection and spatial mapping using a webcam, com
 - [Quick Start](#quick-start)
 - [Usage](#usage)
   - [Command Line Interface](#command-line-interface)
+  - [Web Interface](#web-interface)
   - [Python API](#python-api)
   - [Controls](#controls)
 - [Architecture](#architecture)
@@ -30,7 +31,7 @@ A Python package for 3D object detection and spatial mapping using a webcam, com
 
 ## Overview
 
-Spatial Detector combines state-of-the-art object detection with monocular depth estimation to create a 3D representation of objects in your environment using only a standard webcam. It provides both a command-line interface for interactive use and a Python API for integration into your own applications.
+Spatial Detector combines state-of-the-art object detection with monocular depth estimation to create a 3D representation of objects in your environment using only a standard webcam or iPhone camera. It provides a user-friendly web interface, a desktop command-line application, and a Python API for integration into your own applications.
 
 The project uses YOLOv8 for object detection and MiDaS for depth estimation, with optimizations for both Apple Silicon (M1/M2) through Metal Performance Shaders and NVIDIA GPUs through CUDA.
 
@@ -43,6 +44,13 @@ The project uses YOLOv8 for object detection and MiDaS for depth estimation, wit
 - **Real-time Visualization**: See depth maps and object positions interactively
 - **Top-down View**: Get a bird's eye perspective of your environment
 
+### User Interface Options
+- **User-Friendly Web Interface**: Modern, responsive web app for easy use
+- **iPhone Camera Support**: Stream directly from iPhone cameras
+- **Interactive 3D Visualization**: Three.js-based 3D view with controls
+- **Setup Wizard**: Guided setup process for new users
+- **Desktop Application**: Traditional OpenCV-based UI
+
 ### Technical Features
 - **Hardware Acceleration**: Optimized for:
   - Apple Silicon (M1/M2) chips using Metal Performance Shaders (MPS)
@@ -51,6 +59,8 @@ The project uses YOLOv8 for object detection and MiDaS for depth estimation, wit
 - **Depth Calibration**: Tools for accurate real-world measurements
 - **Interactive Controls**: Toggle visualizations and adjust settings in real-time
 - **Persistence and Tracking**: Follow objects as they move through your space
+- **WebSocket/Socket.IO**: Real-time communication between client and server
+- **QR Code Pairing**: Simple device connection for mobile devices
 
 ## Installation
 
@@ -62,11 +72,15 @@ The project uses YOLOv8 for object detection and MiDaS for depth estimation, wit
 ### Option 1: Install from PyPI (Recommended)
 
 ```bash
-# Install with standard pip
+# Install base package with standard pip
 pip install spatial-detector
 
 # Or use UV for faster installation
 uv pip install spatial-detector
+
+# Install with web UI support
+pip install "spatial-detector[web]"
+uv pip install "spatial-detector[web]"
 ```
 
 ### Option 2: Install from Source
@@ -76,30 +90,48 @@ uv pip install spatial-detector
 git clone https://github.com/oldhero5/spatial-detector.git
 cd spatial-detector
 
-# Install with standard pip
+# Install base package
 pip install -e .
-
-# Or use UV for faster installation
 uv pip install -e .
+
+# Install with web UI support
+pip install -e ".[web]"
+uv pip install -e ".[web]"
+
+# Install with all development dependencies
+pip install -e ".[dev,web]"
+uv pip install -e ".[dev,web]"
 ```
 
 ## Quick Start
 
-After installation, run the webcam application with default settings:
+After installation, run one of the applications with default settings:
 
 ```bash
+# Start desktop webcam application
 spatial-detector
+
+# Start web interface (including iPhone support)
+spatial-detector-web
 ```
 
-This will:
+The desktop application will:
 1. Access your default webcam
 2. Load the lightweight YOLOv8n model
 3. Initialize the MiDaS depth estimator
 4. Show both the main detection view and a top-down spatial map
 
+The web interface will:
+1. Start a web server on http://localhost:5000
+2. Provide a user-friendly interface accessible from any browser
+3. Support iPhone camera streaming via QR code pairing
+4. Offer enhanced 3D visualization with interactive controls
+
 ## Usage
 
 ### Command Line Interface
+
+#### Desktop Application
 
 The CLI provides a flexible interface for using Spatial Detector with various options:
 
@@ -130,6 +162,63 @@ spatial-detector --calibration camera_calibration.json --depth-calibration depth
 # Customize room dimensions for mapping
 spatial-detector --room-width 10.0 --room-depth 8.0
 ```
+
+#### Web Interface
+
+The web interface can be customized with these options:
+
+```bash
+# Start web server with default settings (localhost:5000)
+spatial-detector-web
+
+# Specify host and port
+spatial-detector-web --host 0.0.0.0 --port 8080
+
+# Enable debug mode for development
+spatial-detector-web --debug
+
+# Specify custom template and static file locations
+spatial-detector-web --templates /path/to/templates --static /path/to/static
+```
+
+The web interface is accessible at `http://localhost:5000` by default (or the host:port you specify).
+
+### Web Interface
+
+The web-based user interface offers a more user-friendly way to use Spatial Detector:
+
+#### Features
+
+- **Setup Wizard**: Guided onboarding for new users
+- **Device Selection**: Support for webcams and iPhone cameras
+- **Real-time Visualization**: Live detection results with depth information
+- **Interactive 3D Map**: Three.js-based spatial visualization
+- **Project Management**: Save and load project states
+- **Calibration Tools**: User-friendly calibration workflow
+- **Mobile Responsiveness**: Works on desktop and mobile browsers
+
+#### iPhone Integration
+
+To use your iPhone as a camera source:
+
+1. Start the web server with `spatial-detector-web`
+2. Open the web interface in your browser
+3. Click "Connect to iPhone" or select iPhone in the setup wizard
+4. Scan the generated QR code with your iPhone camera
+5. Follow the prompts on your iPhone to allow camera access
+6. Start using your iPhone as a high-quality camera source
+
+The iPhone integration uses WebRTC for low-latency, high-quality video streaming.
+
+#### 3D Visualization
+
+The web interface includes an advanced 3D visualization system:
+
+- **Interactive Controls**: Rotate, pan, and zoom the 3D view
+- **Object Tracking**: Track detected objects in 3D space
+- **Custom Rendering**: Configurable colors and visualization styles
+- **Grid System**: Reference grid for scale and orientation
+- **3D Export**: Export the spatial map for use in other applications
 
 Full list of CLI options:
 
@@ -218,6 +307,8 @@ cv2.destroyAllWindows()
 
 ### Controls
 
+#### Desktop Application Controls
+
 When using the CLI application, the following keyboard controls are available:
 
 | Key | Function |
@@ -230,6 +321,34 @@ When using the CLI application, the following keyboard controls are available:
 | `+`/`-` | Adjust calibration distance (in calibration mode) |
 | `space` | Set calibration point (in calibration mode) |
 | `s` | Save depth calibration |
+
+#### Web Interface Controls
+
+The web interface provides the following interactive controls:
+
+**Camera Controls:**
+- Start/Stop Camera: Toggle webcam capture
+- Select Camera: Choose from available webcams
+- Connect to iPhone: Generate QR code for iPhone connection
+
+**Visualization Controls:**
+- Show/Hide Labels: Toggle object labels
+- Show/Hide Depth Map: Toggle depth visualization
+- Show/Hide Grid: Toggle 3D grid
+
+**Map Controls:**
+- Show/Hide Map: Toggle 3D map view
+- Reset View: Return to default camera position
+- Export 3D Model: Export the spatial map (when available)
+
+**Calibration Controls:**
+- Start Calibration: Enter calibration mode
+- Save Calibration: Save current calibration
+
+**Project Controls:**
+- New Project: Start a new spatial mapping project
+- Save Project: Save current project state
+- Load Project: Load a previously saved project
 
 ## Architecture
 
@@ -261,10 +380,16 @@ Spatial Detector follows a modular design with these core components:
    - Draws bounding boxes and labels
    - Renders depth maps and other visualizations
 
-7. **CLI Application**: Ties everything together in an interactive interface
+7. **Web Interface**: Provides a user-friendly web-based UI
+   - Supports iPhone camera streaming
+   - Interactive 3D visualization with Three.js
+   - Project management and calibration wizard
+
+8. **CLI Application**: Ties everything together in an interactive interface
 
 ### Data Flow
 
+#### Desktop Application Flow
 1. Image acquisition from webcam
 2. Parallel processing:
    - Object detection (YOLOv8)
@@ -273,6 +398,17 @@ Spatial Detector follows a modular design with these core components:
 4. 3D projection of detected objects
 5. Spatial mapping and object tracking
 6. Visualization and user interaction
+
+#### Web Interface Flow
+1. Image acquisition from webcam or iPhone camera
+2. Image streaming via WebSocket/WebRTC
+3. Server-side processing:
+   - Object detection (YOLOv8)
+   - Depth estimation (MiDaS)
+   - 3D projection and mapping
+4. Real-time results pushed to client
+5. Client-side 3D visualization with Three.js
+6. Interactive controls and project management
 
 ## Calibration
 
