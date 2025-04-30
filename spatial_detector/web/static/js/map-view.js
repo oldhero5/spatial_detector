@@ -122,34 +122,60 @@ class MapView {
      * Update objects based on detection results
      */
     updateObjects(detections) {
+        // Debugging
+        console.log('Updating 3D map with detections:', detections);
+        if (!Array.isArray(detections) || detections.length === 0) {
+            return; // Nothing to update
+        }
+        
         // Track which objects we've seen in this update
         const seenObjects = new Set();
         
         // Process each detection
         detections.forEach((detection, index) => {
+            // Skip if missing critical data
+            if (!detection.label) {
+                console.warn('Detection missing label:', detection);
+                return;
+            }
+            
             const id = `${detection.label}_${index}`;
             seenObjects.add(id);
             
             // Handle objects with no 3D position
-            if (!detection.position_3d) return;
+            const pos3d = detection.position_3d;
+            if (!pos3d || !Array.isArray(pos3d) || pos3d.length < 3) {
+                console.warn('Detection missing valid position_3d:', detection);
+                return;
+            }
             
-            // Get 3D position and create object if it doesn't exist
-            const [x, y, z] = detection.position_3d;
+            // Extract 3D position
+            const [x, y, z] = pos3d;
             
+            // Skip if position is invalid
+            if (isNaN(x) || isNaN(y) || isNaN(z)) {
+                console.warn('Detection has invalid position coordinates:', pos3d);
+                return;
+            }
+            
+            // Create new 3D object if it doesn't exist
             if (!this.objects.has(id)) {
-                // Create new 3D object
                 this.createObject(id, detection);
             }
             
             // Update existing object position and data
             const object = this.objects.get(id);
-            object.position.set(x, y, z);
-            
-            // Update label if available
-            if (object.userData.label) {
-                object.userData.label.position.set(x, y + 0.5, z);
-                object.userData.label.element.textContent = 
-                    `${detection.label} (${(detection.confidence * 100).toFixed(0)}%)`;
+            if (object) {
+                // Scale the position to make it more visible in the scene
+                // Invert Z axis to make objects that are further away appear further in the map
+                object.position.set(x, y, -z);
+                
+                // Update label if available
+                if (object.userData.label) {
+                    object.userData.label.position.set(x, y + 0.5, -z);
+                    object.userData.label.element.textContent = 
+                        `${detection.label} (${z.toFixed(1)}m)`;
+                }
             }
         });
         
@@ -158,7 +184,9 @@ class MapView {
             if (!seenObjects.has(id)) {
                 // Remove label if it exists
                 if (object.userData.label) {
-                    document.body.removeChild(object.userData.label.element);
+                    if (document.body.contains(object.userData.label.element)) {
+                        document.body.removeChild(object.userData.label.element);
+                    }
                     this.scene.remove(object.userData.label);
                 }
                 
@@ -176,12 +204,17 @@ class MapView {
         // Determine object size based on detection type
         let size = 0.2;
         let color = 0xff0000; // Default red
+        let shape = 'box'; // Default shape
+        
+        // Get label safely
+        const label = detection.label?.toLowerCase() || 'unknown';
         
         // Customize appearance based on object type
-        switch (detection.label.toLowerCase()) {
+        switch (label) {
             case 'person':
                 size = 0.4;
                 color = 0x3498db; // Blue
+                shape = 'cylinder';
                 break;
             case 'car':
             case 'truck':
@@ -194,24 +227,49 @@ class MapView {
                 size = 0.3;
                 color = 0x2ecc71; // Green
                 break;
+            case 'dog':
+            case 'cat':
+                size = 0.25;
+                color = 0xf39c12; // Yellow/Orange
+                shape = 'sphere';
+                break;
             // Add more object types as needed
+            default:
+                // Generate consistent color based on label
+                const labelHash = label.split('').reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 0xffffff, 0);
+                color = labelHash;
         }
         
-        // Create mesh for the object
-        const geometry = new THREE.BoxGeometry(size, size, size);
+        // Create geometry based on shape
+        let geometry;
+        switch (shape) {
+            case 'cylinder':
+                geometry = new THREE.CylinderGeometry(size/2, size/2, size*2, 8);
+                break;
+            case 'sphere':
+                geometry = new THREE.SphereGeometry(size/1.5, 16, 16);
+                break;
+            case 'box':
+            default:
+                geometry = new THREE.BoxGeometry(size, size, size);
+        }
+        
+        // Create material with some glow effect
         const material = new THREE.MeshStandardMaterial({ 
             color: color,
             roughness: 0.7,
-            metalness: 0.3
+            metalness: 0.3,
+            emissive: color,
+            emissiveIntensity: 0.2
         });
         
         const mesh = new THREE.Mesh(geometry, material);
         mesh.castShadow = true;
         mesh.receiveShadow = true;
         
-        // Position based on detection
+        // Position based on detection - note we invert Z
         const [x, y, z] = detection.position_3d;
-        mesh.position.set(x, y, z);
+        mesh.position.set(x, y, -z);
         
         // Add to scene and tracking map
         this.scene.add(mesh);
@@ -220,22 +278,25 @@ class MapView {
         // Add HTML label
         const labelDiv = document.createElement('div');
         labelDiv.className = 'map-object-label';
-        labelDiv.textContent = `${detection.label} (${(detection.confidence * 100).toFixed(0)}%)`;
+        labelDiv.textContent = `${detection.label} (${z.toFixed(1)}m)`;
         labelDiv.style.position = 'absolute';
         labelDiv.style.backgroundColor = 'rgba(0,0,0,0.7)';
         labelDiv.style.color = 'white';
-        labelDiv.style.padding = '2px 5px';
-        labelDiv.style.borderRadius = '3px';
+        labelDiv.style.padding = '4px 8px';
+        labelDiv.style.borderRadius = '4px';
         labelDiv.style.fontSize = '12px';
+        labelDiv.style.fontWeight = 'bold';
         labelDiv.style.pointerEvents = 'none';
         labelDiv.style.transform = 'translate(-50%, -100%)';
         document.body.appendChild(labelDiv);
         
+        // Create 3D object for label positioning
         const label = new THREE.Object3D();
-        label.position.set(x, y + 0.5, z);
+        label.position.set(x, y + 0.5, -z);
         label.element = labelDiv;
         this.scene.add(label);
         
+        // Store the label with the mesh
         mesh.userData.label = label;
         
         return mesh;

@@ -120,6 +120,8 @@ function initSocketConnection() {
     });
 
     socket.on('detection_results', (data) => {
+        console.log('Received detection results:', data);
+        
         // Update detection information
         lastDetections = data.detections;
         updateDetectionInfo(data.detections);
@@ -369,17 +371,31 @@ function updateServerConfig() {
  * Display detection information on screen
  */
 function updateDetectionInfo(detections) {
-    if (!showLabels) return;
+    if (!showLabels || !detections || detections.length === 0) {
+        detectionInfoElement.innerHTML = '';
+        return;
+    }
     
     let html = '';
     
     detections.forEach(detection => {
         const pos = detection.position_3d;
-        const posText = pos ? `(${pos[0].toFixed(2)}, ${pos[1].toFixed(2)}, ${pos[2].toFixed(2)})` : '';
+        let posText = '';
+        
+        if (pos && Array.isArray(pos) && pos.length >= 3) {
+            // Focus on the depth (Z) value which is most useful
+            posText = `${pos[2].toFixed(1)}m`;
+        }
+        
+        // Build CSS class for label based on object type
+        let labelClass = 'detection-label';
+        const label = detection.label || 'unknown';
         
         html += `<div class="detection-item">
-            <span class="detection-label">${detection.label}</span>
-            <span class="detection-confidence">${(detection.confidence * 100).toFixed(0)}%</span>
+            <div>
+                <span class="${labelClass}">${label}</span>
+                <span class="detection-confidence">${(detection.confidence * 100).toFixed(0)}%</span>
+            </div>
             <span class="detection-position">${posText}</span>
         </div>`;
     });

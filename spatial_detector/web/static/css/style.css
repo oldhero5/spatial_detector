@@ -173,6 +173,38 @@ main {
     left: 0;
     width: 100%;
     padding: 0.8rem;
+    color: var(--text-primary);
+    z-index: 10;
+}
+
+.detection-item {
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    border-radius: var(--border-radius);
+    padding: 8px 12px;
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+    border-left: 3px solid var(--primary-color);
+}
+
+.detection-label {
+    font-weight: bold;
+    color: var(--primary-light);
+}
+
+.detection-confidence {
+    background-color: var(--bg-darker);
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 12px;
+    margin-left: 8px;
+}
+
+.detection-position {
+    color: var(--text-secondary);
+    font-family: monospace;
+    font-size: 12px;
 }
 
 .camera-controls {

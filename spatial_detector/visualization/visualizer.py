@@ -33,24 +33,60 @@ class Visualizer:
         annotated_frame = frame.copy()
         
         for i, detection in enumerate(detections):
-            x1, y1, x2, y2 = detection['bbox']
-            label = detection['class_name']
-            conf = detection['confidence']
-            
-            # Draw bounding box
-            cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            
-            # Draw label with confidence
-            label_text = f"{label} ({conf:.2f})"
-            
-            # Add 3D position if available
-            if positions_3d and i < len(positions_3d):
-                X, Y, Z = positions_3d[i]
-                label_text += f" - 3D: ({X:.2f}, {Y:.2f}, {Z:.2f})"
+            try:
+                # Get bounding box 
+                x1, y1, x2, y2 = detection['bbox']
+                x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
                 
-            if self.show_labels:
-                cv2.putText(annotated_frame, label_text, (x1, y1 - 10),
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                # Get label and confidence
+                label = detection['class_name']
+                conf = detection['confidence']
+                
+                # Generate random but consistent color based on label
+                label_hash = sum(ord(c) for c in label)
+                color = (
+                    (label_hash * 123) % 255,  # B
+                    (label_hash * 147) % 255,  # G
+                    (label_hash * 109) % 255   # R
+                )
+                
+                # Draw bounding box
+                cv2.rectangle(annotated_frame, (x1, y1), (x2, y2), color, 2)
+                
+                # Draw label with confidence
+                label_text = f"{label} ({conf:.2f})"
+                
+                # Add 3D position if available
+                position_3d = detection.get('position_3d')
+                if position_3d is not None:
+                    X, Y, Z = position_3d
+                    depth_info = f" {Z:.1f}m"
+                    label_text += depth_info
+                
+                if self.show_labels:
+                    # Create background for text
+                    text_size = cv2.getTextSize(label_text, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)[0]
+                    cv2.rectangle(
+                        annotated_frame, 
+                        (x1, y1 - 25),
+                        (x1 + text_size[0] + 10, y1),
+                        (0, 0, 0), 
+                        -1
+                    )
+                    
+                    # Draw text
+                    cv2.putText(
+                        annotated_frame, 
+                        label_text,
+                        (x1 + 5, y1 - 7),
+                        cv2.FONT_HERSHEY_SIMPLEX, 
+                        0.5, 
+                        color, 
+                        2
+                    )
+            except Exception as e:
+                print(f"Error drawing detection {i}: {e}")
+                continue
                 
         return annotated_frame
         
