@@ -315,40 +315,53 @@ class WebServer:
                     detections = self.detector.detect(frame)
                     
                     # Estimate depth
-                    depth_map = self.depth_estimator.estimate_depth(frame)
+                    depth_map, depth_norm = self.depth_estimator.estimate_depth(frame)
                     
                     # Update frame with visualizations
                     if self.vis:
                         # Get 3D positions for detections
                         for detection in detections:
-                            x, y, w, h = detection.bbox
-                            center_x = x + w / 2
-                            center_y = y + h / 2
+                            x1, y1, x2, y2 = detection['bbox']
+                            center_x = int((x1 + x2) / 2)
+                            center_y = int((y1 + y2) / 2)
                             
                             # Get depth at center of bbox
                             depth = self.depth_estimator.get_depth_at_point(
-                                depth_map, int(center_x), int(center_y)
+                                depth_norm, center_x, center_y
                             )
                             
                             # Convert to 3D coordinates
-                            world_coords = self.camera.pixel_to_3d(center_x, center_y, depth)
-                            detection.position_3d = world_coords
+                            if depth is not None:
+                                world_coords = self.camera.pixel_to_3d(center_x, center_y, depth)
+                                detection['position_3d'] = world_coords
+                            else:
+                                detection['position_3d'] = (0, 0, 0)
+                        
+                        # Get 3D positions for visualization
+                        positions_3d = [d.get('position_3d', (0, 0, 0)) for d in detections]
                         
                         # Draw visualizations
-                        self.vis.draw_detections(frame, detections)
+                        frame = self.vis.draw_detections(frame, detections, positions_3d)
                         if self.vis.show_depth:
-                            self.vis.add_depth_visualization(frame, depth_map)
+                            frame = self.vis.add_depth_visualization(frame, depth_norm)
                     
                     # Update the frame buffer with the processed frame
                     self.frame_buffer = frame
                     
                     # Emit detection data to connected clients
-                    detection_data = [{
-                        "label": d.label,
-                        "confidence": float(d.confidence),
-                        "bbox": [float(v) for v in d.bbox],
-                        "position_3d": [float(v) for v in d.position_3d] if hasattr(d, "position_3d") else None
-                    } for d in detections]
+                    detection_data = []
+                    for d in detections:
+                        data = {
+                            "label": d['class_name'],
+                            "confidence": float(d['confidence']),
+                            "bbox": [float(v) for v in d['bbox']],
+                            "position_3d": None
+                        }
+                        
+                        if 'position_3d' in d and d['position_3d'] is not None:
+                            data["position_3d"] = [float(v) for v in d['position_3d']]
+                            
+                        detection_data.append(data)
                     
                     self.socketio.emit('detection_results', {
                         "detections": detection_data,
