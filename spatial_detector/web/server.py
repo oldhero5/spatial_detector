@@ -8,6 +8,12 @@ import json
 import logging
 import threading
 import time
+import sys
+import platform
+import socket
+import qrcode
+import base64
+from io import BytesIO
 from typing import Dict, Any, Optional, List
 
 import cv2
@@ -32,6 +38,9 @@ class WebServer:
         static_folder: str = None,
         template_folder: str = None
     ):
+        # Detect platform for platform-specific features
+        self.is_mac = platform.system() == "Darwin"
+        self.qr_code_data = None
         # Initialize folders
         current_dir = os.path.dirname(os.path.abspath(__file__))
         self.static_folder = static_folder or os.path.join(current_dir, "static")
@@ -78,16 +87,52 @@ class WebServer:
         
         @self.app.route('/')
         def index():
-            return render_template('index.html')
+            return render_template('index.html', is_mac=self.is_mac)
         
         @self.app.route('/api/status')
         def status():
+            # Generate connection info for mobile devices
+            connection_info = {}
+            if self.is_mac:
+                # Get local IP address
+                try:
+                    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    s.connect(("8.8.8.8", 80))
+                    local_ip = s.getsockname()[0]
+                    s.close()
+                    
+                    # Generate QR code for connection
+                    connection_url = f"http://{local_ip}:{self.port}"
+                    img = qrcode.make(connection_url)
+                    buffered = BytesIO()
+                    img.save(buffered, format="PNG")
+                    self.qr_code_data = base64.b64encode(buffered.getvalue()).decode("utf-8")
+                    
+                    connection_info = {
+                        "local_ip": local_ip,
+                        "port": self.port,
+                        "url": connection_url,
+                        "qr_code": self.qr_code_data
+                    }
+                except Exception as e:
+                    self.logger.error(f"Error generating connection info: {e}")
+            
             return jsonify({
                 "status": "running",
                 "connected_devices": list(self.client_streams.keys()),
                 "active_stream": self.active_stream_id,
                 "detector_ready": self.detector is not None,
-                "depth_ready": self.depth_estimator is not None
+                "depth_ready": self.depth_estimator is not None,
+                "is_mac": self.is_mac,
+                "connection_info": connection_info
+            })
+            
+        @self.app.route('/api/qrcode')
+        def get_qrcode():
+            if not self.is_mac or not self.qr_code_data:
+                return jsonify({"error": "QR code not available"}), 404
+            return jsonify({
+                "qr_code": self.qr_code_data
             })
         
         @self.app.route('/stream/<stream_id>')
@@ -202,22 +247,59 @@ class WebServer:
     def initialize_detector(self, width: int, height: int):
         """Initialize detector components"""
         self.logger.info("Initializing detector components...")
+        self.socketio.emit('initialization_status', {"status": "starting", "message": "Starting initialization..."})
         
-        # Initialize detector if not already done
-        if self.detector is None:
-            self.detector = yolo_detector.YOLODetector()
+        # Progress callback to report status to clients
+        def progress_callback(component, message):
+            self.logger.info(f"{component}: {message}")
+            self.socketio.emit('initialization_status', {
+                "status": "progress",
+                "component": component,
+                "message": message
+            })
         
-        # Initialize depth estimator if not already done
-        if self.depth_estimator is None:
-            self.depth_estimator = midas_depth.MiDaSDepthEstimator()
-        
-        # Create camera model
-        self.camera = camera_model.PinholeCamera(width, height)
-        
-        # Initialize visualizer
-        self.vis = visualizer.Visualizer()
-        
-        self.logger.info("Detector components initialized")
+        try:
+            # Initialize detector if not already done
+            if self.detector is None:
+                self.socketio.emit('initialization_status', {
+                    "status": "progress", 
+                    "component": "detector",
+                    "message": "Loading object detector..."
+                })
+                self.detector = yolo_detector.YOLODetector(
+                    progress_callback=progress_callback
+                )
+            
+            # Initialize depth estimator if not already done
+            if self.depth_estimator is None:
+                self.socketio.emit('initialization_status', {
+                    "status": "progress", 
+                    "component": "depth",
+                    "message": "Loading depth estimator..."
+                })
+                self.depth_estimator = midas_depth.MiDaSDepthEstimator(
+                    progress_callback=progress_callback
+                )
+            
+            # Create camera model
+            self.camera = camera_model.PinholeCamera(width, height)
+            
+            # Initialize visualizer
+            self.vis = visualizer.Visualizer()
+            
+            self.logger.info("Detector components initialized")
+            self.socketio.emit('initialization_status', {
+                "status": "complete",
+                "message": "All components initialized successfully"
+            })
+            
+        except Exception as e:
+            error_msg = f"Error initializing components: {e}"
+            self.logger.error(error_msg)
+            self.socketio.emit('initialization_status', {
+                "status": "error",
+                "message": error_msg
+            })
     
     def process_frames(self):
         """Process frames from the active stream"""

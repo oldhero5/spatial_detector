@@ -232,13 +232,19 @@ def main():
         elif key == ord('-'):
             calibration_distance = max(0.1, calibration_distance - 0.1)
             print(f"Calibration distance: {calibration_distance:.2f}m")
-        elif key == ord(' ') and calibration_mode:
+        elif (key == ord(' ') or key == 32) and calibration_mode:  # Check for both space ordinal and 32 (ASCII for space)
             # Perform calibration at center point
             center_x, center_y = width // 2, height // 2
             calibration_depth = depth_estimator.get_depth_at_point(depth_norm, center_x, center_y)
             if calibration_depth is not None:
                 depth_calibrator.calibrate_with_known_distance(calibration_depth, calibration_distance)
                 print(f"Calibrated depth at {calibration_distance:.2f}m")
+                # Give visual feedback for calibration
+                cv2.circle(frame, (center_x, center_y), 30, (0, 255, 0), 3)
+                cv2.putText(frame, "CALIBRATED!", (center_x - 70, center_y - 40), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+                cv2.imshow(main_window, frame)
+                cv2.waitKey(500)  # Show feedback for 500ms
         elif key == ord('s'):
             # Save calibration
             if args.depth_calibration:

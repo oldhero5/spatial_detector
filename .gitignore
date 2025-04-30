@@ -81,3 +81,8 @@ depth_calibration.json
 
 # Logs
 *.log
+
+# CLAUDE.md
+CLAUDE.md
+
+.DS_Store
