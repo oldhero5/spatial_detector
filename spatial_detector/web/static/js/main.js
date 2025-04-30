@@ -120,19 +120,44 @@ function initSocketConnection() {
     });
 
     socket.on('detection_results', (data) => {
-        console.log('Received detection results:', data);
-        
-        // Update detection information
-        lastDetections = data.detections;
-        updateDetectionInfo(data.detections);
-        
-        // Update map if active
-        if (showMap && window.mapView) {
-            window.mapView.updateObjects(data.detections);
+        try {
+            // Log first few detections for debugging (not all to avoid cluttering console)
+            const numToLog = Math.min(3, data.detections?.length || 0);
+            console.log(`Received ${data.detections?.length || 0} detections. Sample:`, 
+                data.detections?.slice(0, numToLog));
+                
+            // Validate detection data
+            if (!data.detections || !Array.isArray(data.detections)) {
+                console.error("Invalid detection data:", data);
+                return;
+            }
+            
+            // Check for position_3d in detections
+            const hasPositions = data.detections.some(d => d.position_3d && Array.isArray(d.position_3d));
+            if (data.detections.length > 0 && !hasPositions) {
+                console.warn("Detections missing position_3d data");
+            }
+            
+            // Store detections for other components
+            lastDetections = data.detections;
+            
+            // Update UI
+            updateDetectionInfo(data.detections);
+            
+            // Update map if active
+            if (showMap && window.mapView) {
+                try {
+                    window.mapView.updateObjects(data.detections);
+                } catch (mapError) {
+                    console.error("Error updating map with detections:", mapError);
+                }
+            }
+            
+            // Update FPS counter
+            frameCount++;
+        } catch (error) {
+            console.error("Error handling detection results:", error);
         }
-        
-        // Update FPS counter
-        frameCount++;
     });
     
     // Model initialization status messages
@@ -220,13 +245,28 @@ function initEventListeners() {
             
             // Initialize 3D map if not already done
             if (!window.mapView) {
-                window.mapView = new MapView('map-container');
+                try {
+                    console.log("Initializing map view");
+                    window.mapView = new MapView('map-container');
+                    showStatusMessage('info', 'Map view initialized');
+                } catch (error) {
+                    console.error("Error initializing map view:", error);
+                    showStatusMessage('error', 'Failed to initialize map view');
+                }
             }
             
             // Update with latest detections
-            if (lastDetections.length > 0) {
-                window.mapView.updateObjects(lastDetections);
+            if (lastDetections && lastDetections.length > 0) {
+                try {
+                    console.log("Updating map with detections:", lastDetections);
+                    window.mapView.updateObjects(lastDetections);
+                } catch (error) {
+                    console.error("Error updating map with detections:", error);
+                }
             }
+            
+            // Force resize to ensure map renders correctly
+            window.dispatchEvent(new Event('resize'));
         } else {
             toggleMapButton.textContent = 'Show Map';
             mapContainer.style.display = 'none';

@@ -176,13 +176,21 @@ class WebServer:
             self.logger.info(f"Client connected: {request.sid}")
         
         @self.socketio.on('disconnect')
-        def handle_disconnect():
-            if request.sid in self.client_streams:
-                del self.client_streams[request.sid]
-                self.logger.info(f"Client disconnected, removed stream: {request.sid}")
+        def handle_disconnect(sid=None):
+            """Handle client disconnect, must accept a parameter as Socket.IO passes session ID"""
+            client_sid = sid or request.sid
+            self.logger.info(f"Client disconnected: {client_sid}")
+            
+            if client_sid in self.client_streams:
+                del self.client_streams[client_sid]
+                self.logger.info(f"Removed stream: {client_sid}")
             
             if not self.client_streams and self.is_processing:
-                self.stop_processing()
+                try:
+                    # Use safe version that won't try to join current thread
+                    self.safe_stop_processing()
+                except Exception as e:
+                    self.logger.error(f"Error stopping processing on disconnect: {e}")
         
         @self.socketio.on('register_stream')
         def handle_register_stream(data):
@@ -321,52 +329,123 @@ class WebServer:
                     if self.vis:
                         # Get 3D positions for detections
                         for detection in detections:
-                            x1, y1, x2, y2 = detection['bbox']
-                            center_x = int((x1 + x2) / 2)
-                            center_y = int((y1 + y2) / 2)
-                            
-                            # Get depth at center of bbox
-                            depth = self.depth_estimator.get_depth_at_point(
-                                depth_norm, center_x, center_y
-                            )
-                            
-                            # Convert to 3D coordinates
-                            if depth is not None:
-                                world_coords = self.camera.pixel_to_3d(center_x, center_y, depth)
-                                detection['position_3d'] = world_coords
-                            else:
+                            try:
+                                # Get bounding box
+                                bbox = detection.get('bbox')
+                                if not bbox or len(bbox) != 4:
+                                    self.logger.warning(f"Invalid bbox: {bbox}")
+                                    continue
+                                    
+                                # Calculate center point
+                                x1, y1, x2, y2 = [float(v) for v in bbox]
+                                center_x = int((x1 + x2) / 2)
+                                center_y = int((y1 + y2) / 2)
+                                
+                                # Ensure center point is within frame
+                                if center_x < 0 or center_y < 0 or center_x >= frame.shape[1] or center_y >= frame.shape[0]:
+                                    self.logger.warning(f"Center point out of bounds: ({center_x}, {center_y})")
+                                    detection['position_3d'] = (0, 0, 0)
+                                    continue
+                                
+                                # Get depth at center of bbox
+                                depth = self.depth_estimator.get_depth_at_point(
+                                    depth_norm, center_x, center_y
+                                )
+                                
+                                # Convert to 3D coordinates
+                                if depth is not None and not np.isnan(depth):
+                                    # Use depth scale to convert to meaningful depth
+                                    world_coords = self.camera.pixel_to_3d(
+                                        center_x, center_y, depth, 
+                                        normalized_depth=True,
+                                        depth_scale=5.0  # Scale for better visualization
+                                    )
+                                    
+                                    # Store as tuple for consistency
+                                    detection['position_3d'] = tuple(float(v) for v in world_coords)
+                                    self.logger.debug(f"3D position for {detection.get('class_name')}: {detection['position_3d']}")
+                                else:
+                                    self.logger.debug(f"No valid depth for detection at ({center_x}, {center_y})")
+                                    detection['position_3d'] = (0, 0, 0)
+                            except Exception as pos_error:
+                                self.logger.error(f"Error calculating 3D position: {pos_error}")
                                 detection['position_3d'] = (0, 0, 0)
                         
-                        # Get 3D positions for visualization
-                        positions_3d = [d.get('position_3d', (0, 0, 0)) for d in detections]
-                        
-                        # Draw visualizations
+                        # Debug detection data
+                    self.logger.debug(f"Processing {len(detections)} detections")
+                    for i, d in enumerate(detections):
+                        self.logger.debug(f"Detection {i}: {d.get('class_name')}, bbox: {d.get('bbox')}, position_3d: {d.get('position_3d')}")
+                    
+                    # Get 3D positions for visualization
+                    positions_3d = [d.get('position_3d', (0, 0, 0)) for d in detections]
+                    
+                    # Draw visualizations
+                    try:
+                        # Draw bounding boxes and labels
                         frame = self.vis.draw_detections(frame, detections, positions_3d)
+                        self.logger.debug("Visualizations drawn successfully")
+                        
+                        # Add depth visualization if enabled
                         if self.vis.show_depth:
                             frame = self.vis.add_depth_visualization(frame, depth_norm)
+                    except Exception as viz_error:
+                        self.logger.error(f"Visualization error: {viz_error}")
+                        import traceback
+                        self.logger.error(traceback.format_exc())
                     
                     # Update the frame buffer with the processed frame
                     self.frame_buffer = frame
                     
-                    # Emit detection data to connected clients
+                    # Prepare detection data for clients
                     detection_data = []
-                    for d in detections:
-                        data = {
-                            "label": d['class_name'],
-                            "confidence": float(d['confidence']),
-                            "bbox": [float(v) for v in d['bbox']],
-                            "position_3d": None
-                        }
-                        
-                        if 'position_3d' in d and d['position_3d'] is not None:
-                            data["position_3d"] = [float(v) for v in d['position_3d']]
-                            
-                        detection_data.append(data)
+                    self.logger.debug(f"Processing {len(detections)} detections for emit")
                     
-                    self.socketio.emit('detection_results', {
-                        "detections": detection_data,
-                        "timestamp": time.time()
-                    })
+                    for d in detections:
+                        try:
+                            # Basic required fields
+                            data = {
+                                "label": d.get('class_name', 'unknown'),
+                                "confidence": float(d.get('confidence', 0.0)),
+                                "bbox": [float(v) for v in d.get('bbox', [0, 0, 0, 0])],
+                                "position_3d": None
+                            }
+                            
+                            # Add 3D position data if available
+                            if 'position_3d' in d and d['position_3d'] is not None:
+                                pos = d['position_3d']
+                                if isinstance(pos, (list, tuple)) and len(pos) >= 3:
+                                    # Convert all position values to float
+                                    pos_data = [float(v) for v in pos[:3]]
+                                    
+                                    # Check if values are valid
+                                    if all(not np.isnan(v) for v in pos_data) and all(np.abs(v) < 1000 for v in pos_data):
+                                        data["position_3d"] = pos_data
+                                    else:
+                                        self.logger.warning(f"Invalid position values: {pos_data}")
+                                else:
+                                    self.logger.warning(f"Invalid position format: {pos}")
+                            
+                            detection_data.append(data)
+                            
+                        except Exception as det_error:
+                            self.logger.error(f"Error processing detection for emit: {det_error}")
+                            continue
+                    
+                    # Send data to clients with validation
+                    if detection_data:
+                        self.logger.debug(f"Emitting {len(detection_data)} detections to clients")
+                        
+                        # Check the first few detections for position_3d data
+                        has_positions = any(d.get('position_3d') is not None for d in detection_data[:5])
+                        if not has_positions:
+                            self.logger.warning("No valid position_3d data in detections")
+                        
+                        self.socketio.emit('detection_results', {
+                            "detections": detection_data,
+                            "timestamp": time.time()
+                        })
+                    else:
+                        self.logger.debug("No valid detections to emit")
                     
                 except Exception as e:
                     self.logger.error(f"Error in processing thread: {e}")
@@ -382,12 +461,27 @@ class WebServer:
             self.processing_thread.daemon = True
             self.processing_thread.start()
     
+    def safe_stop_processing(self):
+        """Safely stop processing without attempting to join from the same thread"""
+        self.logger.info("Safely stopping processing")
+        self.is_processing = False
+        # Don't attempt to join threads - just mark it for stopping
+        
     def stop_processing(self):
         """Stop the frame processing thread"""
+        self.logger.info("Stopping processing thread")
         self.is_processing = False
-        if self.processing_thread:
-            self.processing_thread.join(timeout=1.0)
-            self.processing_thread = None
+        
+        # Only join the thread if we're not in the same thread
+        if self.processing_thread and self.processing_thread != threading.current_thread():
+            try:
+                self.processing_thread.join(timeout=1.0)
+                self.processing_thread = None
+                self.logger.info("Processing thread stopped successfully")
+            except RuntimeError as e:
+                self.logger.error(f"Error joining processing thread: {e}")
+        else:
+            self.logger.info("Processing thread marked for stopping (same thread or None)")
     
     def start(self):
         """Start the web server"""
