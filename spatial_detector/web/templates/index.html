@@ -8,6 +8,8 @@
     <script src="https://cdn.socket.io/4.4.1/socket.io.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
 </head>
 <body>
     <div class="app-container">
@@ -105,11 +107,12 @@
                     <h3>iPhone Connection</h3>
                     <div class="qr-code-container">
                         <div id="qr-code"></div>
-                        <p>Scan with your iPhone to connect</p>
+                        <p id="qr-instructions">Scan with your iPhone to connect</p>
                     </div>
                     <div class="control-row">
                         <button id="generate-qr">Generate Connection Code</button>
                     </div>
+                    <div id="connection-status-area"></div>
                 </div>
             </div>
         </main>
