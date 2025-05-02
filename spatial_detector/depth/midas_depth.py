@@ -1,10 +1,41 @@
 import torch
 import cv2
 import numpy as np
+from functools import lru_cache
+
+# Model cache for improved performance
+_DEPTH_MODEL_CACHE = {}
+_TRANSFORM_CACHE = {}
+
+# Cache the model loading to improve performance
+def _get_cached_midas_model(model_type, device):
+    """Get a MiDaS model from cache or load a new one"""
+    cache_key = f"{model_type}_{device}"
+    
+    if cache_key in _DEPTH_MODEL_CACHE:
+        print(f"Using cached MiDaS model: {model_type}")
+        return _DEPTH_MODEL_CACHE[cache_key]
+    
+    # Load a new model
+    model = torch.hub.load("intel-isl/MiDaS", model_type)
+    model.to(device)
+    model.eval()
+    
+    # Cache the model
+    _DEPTH_MODEL_CACHE[cache_key] = model
+    return model
+
+# Cache the transforms for improved loading performance
+def _get_midas_transforms():
+    """Get MiDaS transforms from cache or load new ones"""
+    if not _TRANSFORM_CACHE:
+        _TRANSFORM_CACHE["transforms"] = torch.hub.load("intel-isl/MiDaS", "transforms")
+    return _TRANSFORM_CACHE["transforms"]
 
 class MiDaSDepthEstimator:
     """
     MiDaS-based monocular depth estimation.
+    Optimized with model caching for better performance.
     """
     def __init__(self, model_type="MiDaS_small", device=None, progress_callback=None):
         """
@@ -32,25 +63,44 @@ class MiDaSDepthEstimator:
         else:
             self.device = device
         
-        # Load MiDaS model with error handling
+        # Load MiDaS model with error handling and caching
         try:
             self._report_progress("Initializing MiDaS depth estimator...")
             print(f"Loading MiDaS model: {model_type} on {self.device}")
             self._report_progress(f"Loading MiDaS model: {model_type} on {self.device}")
             
-            # Load model
-            self.model = torch.hub.load("intel-isl/MiDaS", model_type)
-            self.model.to(self.device)
-            self.model.eval()
+            # Load model with error handling and caching
+            try:
+                self.model = _get_cached_midas_model(model_type, self.device)
+                print(f"Successfully loaded MiDaS model: {model_type}")
+            except Exception as model_err:
+                error_msg = f"Error loading MiDaS model {model_type}: {model_err}"
+                print(error_msg)
+                self._report_progress(error_msg)
+                # Try fallback to small model if a different one was requested
+                if model_type != "MiDaS_small":
+                    print("Trying fallback model: MiDaS_small")
+                    self._report_progress("Trying fallback model: MiDaS_small")
+                    self.model = _get_cached_midas_model("MiDaS_small", self.device)
+                    model_type = "MiDaS_small"  # Update model type for transform selection
+                else:
+                    raise RuntimeError(error_msg)
             
-            # MiDaS transformation
-            self._report_progress("Loading transformations...")
-            self.midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms")
-            
-            if model_type == "DPT_Large" or model_type == "DPT_Hybrid":
-                self.transform = self.midas_transforms.dpt_transform
-            else:
-                self.transform = self.midas_transforms.small_transform
+            # MiDaS transformation with error handling and caching
+            try:
+                self._report_progress("Loading transformations...")
+                self.midas_transforms = _get_midas_transforms()
+                
+                if model_type == "DPT_Large" or model_type == "DPT_Hybrid":
+                    self.transform = self.midas_transforms.dpt_transform
+                else:
+                    self.transform = self.midas_transforms.small_transform
+                print("Successfully loaded MiDaS transformations")
+            except Exception as transform_err:
+                error_msg = f"Error loading MiDaS transformations: {transform_err}"
+                print(error_msg)
+                self._report_progress(error_msg)
+                raise RuntimeError(error_msg)
                 
             self._report_progress("MiDaS depth estimator loaded successfully")
             

@@ -1,9 +1,33 @@
 import torch
+import os
 from ultralytics import YOLO
+from functools import lru_cache
+
+# Global model cache to avoid reloading the same model multiple times
+_MODEL_CACHE = {}
+
+# LRU cache for the model loading function
+@lru_cache(maxsize=5)  # Cache up to 5 different models
+def _load_yolo_model(model_path, device=None):
+    """Load YOLO model with caching to improve performance for repeated initializations"""
+    cache_key = f"{model_path}_{device}"
+    
+    # Return cached model if available
+    if cache_key in _MODEL_CACHE:
+        print(f"Using cached YOLO model: {model_path}")
+        return _MODEL_CACHE[cache_key]
+    
+    # Load new model
+    model = YOLO(model_path)
+    
+    # Store in cache
+    _MODEL_CACHE[cache_key] = model
+    return model
 
 class YOLODetector:
     """
     YOLO-based object detector for 2D object detection.
+    Optimized with model caching for better performance.
     """
     def __init__(self, model_path='yolov8n.pt', confidence=0.25, device=None, progress_callback=None):
         """
@@ -31,13 +55,29 @@ class YOLODetector:
         else:
             self.device = device
         
-        # Load YOLO model with error handling
+        # Load YOLO model with error handling and caching
         try:
             self._report_progress("Initializing YOLO detector...")
             print(f"Loading YOLO model: {model_path} on {self.device}")
             self._report_progress(f"Loading YOLO model: {model_path} on {self.device}")
-            self.model = YOLO(model_path)
-            self._report_progress("YOLO model loaded successfully")
+            
+            # Try to load model with caching
+            try:
+                self.model = _load_yolo_model(model_path, self.device)
+                print("YOLO model loaded successfully")
+                self._report_progress("YOLO model loaded successfully")
+            except Exception as load_error:
+                error_msg = f"Error loading YOLO model file: {load_error}"
+                print(error_msg)
+                self._report_progress(error_msg)
+                
+                # Use a fallback model path if possible
+                if model_path != 'yolov8n.pt':
+                    print("Trying fallback model: yolov8n.pt")
+                    self._report_progress("Trying fallback model: yolov8n.pt")
+                    self.model = _load_yolo_model('yolov8n.pt', self.device)
+                else:
+                    raise RuntimeError(error_msg)
         except Exception as e:
             error_msg = f"Error loading YOLO model: {e}"
             print(error_msg)

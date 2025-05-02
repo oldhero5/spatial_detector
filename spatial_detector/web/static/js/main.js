@@ -132,25 +132,55 @@ function initSocketConnection() {
                 return;
             }
             
-            // Check for position_3d in detections
-            const hasPositions = data.detections.some(d => d.position_3d && Array.isArray(d.position_3d));
-            if (data.detections.length > 0 && !hasPositions) {
-                console.warn("Detections missing position_3d data");
+            // Check for position_3d in detections and validate with more lenient criteria
+            // Don't filter out zero positions as they might be valid for the origin or near the origin
+            let validDetections = data.detections.filter(d => 
+                d.position_3d && 
+                Array.isArray(d.position_3d) &&
+                d.position_3d.length >= 3 &&
+                d.position_3d.every(v => !isNaN(parseFloat(v)))
+                // Don't require non-zero values as that might filter out valid positions
+                // !(d.position_3d[0] === 0 && d.position_3d[1] === 0 && d.position_3d[2] === 0)
+            );
+            
+            if (data.detections.length > 0 && validDetections.length === 0) {
+                console.warn("All detections missing valid position_3d data");
+            } else if (validDetections.length < data.detections.length) {
+                console.warn(`${data.detections.length - validDetections.length} detections have invalid position data`);
             }
             
-            // Store detections for other components
-            lastDetections = data.detections;
+            // Store filtered detections for other components
+            lastDetections = validDetections;
             
-            // Update UI
+            // Update UI with all detections (even those with invalid positions)
             updateDetectionInfo(data.detections);
             
-            // Update map if active
+            // Update map if active - use only valid detections
             if (showMap && window.mapView) {
                 try {
-                    window.mapView.updateObjects(data.detections);
+                    // More detailed logging of detections being sent to map
+                    console.log(`Attempting to update map with ${validDetections.length} valid detections`);
+                    
+                    if (validDetections.length > 0) {
+                        console.log("Valid detection details:");
+                        validDetections.forEach((det, i) => {
+                            console.log(`Detection ${i}: label=${det.label}, position_3d=${JSON.stringify(det.position_3d)}, bbox=${JSON.stringify(det.bbox)}`);
+                        });
+                        
+                        // Always update the map even if there are no valid detections
+                        // This ensures proper map initialization and rendering
+                        window.mapView.updateObjects(validDetections);
+                    } else {
+                        console.warn("No valid detections to display in map");
+                        // Still update map to clear any stale objects
+                        window.mapView.updateObjects([]);
+                    }
                 } catch (mapError) {
                     console.error("Error updating map with detections:", mapError);
+                    console.error("Error details:", mapError.stack);
                 }
+            } else if (showMap) {
+                console.warn("Map view is not initialized but showMap is true");
             }
             
             // Update FPS counter
@@ -247,11 +277,40 @@ function initEventListeners() {
             if (!window.mapView) {
                 try {
                     console.log("Initializing map view");
+                    
+                    // Ensure THREE is defined
+                    if (typeof THREE === 'undefined') {
+                        console.error("THREE.js is not loaded!");
+                        showStatusMessage('error', 'THREE.js library is not loaded. Map view cannot be initialized.');
+                        return;
+                    }
+                    
+                    // Check that the map container exists
+                    const mapContainerElem = document.getElementById('map-container');
+                    if (!mapContainerElem) {
+                        console.error("Map container element not found!");
+                        showStatusMessage('error', 'Map container element not found');
+                        return;
+                    }
+                    
+                    // Ensure the container has dimensions
+                    if (mapContainerElem.clientWidth === 0 || mapContainerElem.clientHeight === 0) {
+                        console.error("Map container has zero dimensions!");
+                        mapContainerElem.style.height = '300px'; // Set default height
+                    }
+                    
+                    // Initialize map view
                     window.mapView = new MapView('map-container');
-                    showStatusMessage('info', 'Map view initialized');
+                    showStatusMessage('success', 'Map view initialized');
+                    
+                    // Add test objects to verify rendering is working
+                    window.mapView.addTestObject();
+                    
+                    // Log MapView initialization success
+                    console.log("MapView initialized successfully with test objects");
                 } catch (error) {
                     console.error("Error initializing map view:", error);
-                    showStatusMessage('error', 'Failed to initialize map view');
+                    showStatusMessage('error', 'Failed to initialize map view: ' + error.message);
                 }
             }
             
@@ -259,17 +318,57 @@ function initEventListeners() {
             if (lastDetections && lastDetections.length > 0) {
                 try {
                     console.log("Updating map with detections:", lastDetections);
+                    
+                    // Log the position_3d values explicitly
+                    lastDetections.forEach((det, i) => {
+                        console.log(`Detection ${i} position_3d:`, det.position_3d, 
+                            `typeof:`, typeof det.position_3d, 
+                            `isArray:`, Array.isArray(det.position_3d));
+                    });
+                    
                     window.mapView.updateObjects(lastDetections);
                 } catch (error) {
                     console.error("Error updating map with detections:", error);
                 }
+            } else {
+                console.log("No valid detections available for map");
             }
             
-            // Force resize to ensure map renders correctly
-            window.dispatchEvent(new Event('resize'));
+            // Force resize to ensure map renders correctly - use a longer delay
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+                console.log("Forced resize event for map view");
+                
+                // Ensure Three.js renderer is properly initialized and re-rendered
+                if (window.mapView && window.mapView.renderer) {
+                    try {
+                        // Force a full renderer initialization
+                        window.mapView.renderer.setSize(mapContainer.clientWidth, mapContainer.clientHeight);
+                        window.mapView.camera.aspect = mapContainer.clientWidth / mapContainer.clientHeight;
+                        window.mapView.camera.updateProjectionMatrix();
+                        
+                        // Add test objects via the dedicated method instead of adding them here
+                        // This ensures they're placed consistently with our new coordinate system
+                        if (window.mapView.addTestObject) {
+                            window.mapView.addTestObject();
+                            console.log("Added test objects to scene for visibility reference");
+                        } else {
+                            console.warn("addTestObject method not available on mapView");
+                        }
+                        
+                        // Force render the scene
+                        window.mapView.renderer.render(window.mapView.scene, window.mapView.camera);
+                        console.log("Map view renderer updated successfully with test object");
+                    } catch (renderError) {
+                        console.error("Error updating map renderer:", renderError);
+                    }
+                }
+            }, 300); // Longer delay to ensure the container is fully displayed and measured
         } else {
             toggleMapButton.textContent = 'Show Map';
             mapContainer.style.display = 'none';
+            // Don't dispose the map view - just hide it
+            // This way we can show it again without reinitializing
         }
     });
 
@@ -411,14 +510,25 @@ function updateServerConfig() {
  * Display detection information on screen
  */
 function updateDetectionInfo(detections) {
-    if (!showLabels || !detections || detections.length === 0) {
+    if (!detections || detections.length === 0) {
         detectionInfoElement.innerHTML = '';
+        // Clear any existing bounding boxes
+        document.querySelectorAll('.detection-box').forEach(box => box.remove());
         return;
     }
     
     let html = '';
     
-    detections.forEach(detection => {
+    // Get video container dimensions
+    const videoContainer = document.getElementById('video-container');
+    const containerWidth = videoContainer.clientWidth;
+    const containerHeight = videoContainer.clientHeight;
+    
+    // Clear any existing bounding boxes
+    document.querySelectorAll('.detection-box').forEach(box => box.remove());
+    
+    detections.forEach((detection, index) => {
+        // Handle position text
         const pos = detection.position_3d;
         let posText = '';
         
@@ -431,16 +541,73 @@ function updateDetectionInfo(detections) {
         let labelClass = 'detection-label';
         const label = detection.label || 'unknown';
         
-        html += `<div class="detection-item">
-            <div>
-                <span class="${labelClass}">${label}</span>
-                <span class="detection-confidence">${(detection.confidence * 100).toFixed(0)}%</span>
-            </div>
-            <span class="detection-position">${posText}</span>
-        </div>`;
+        // Only add the detection item if show labels is enabled
+        if (showLabels) {
+            html += `<div class="detection-item">
+                <div>
+                    <span class="${labelClass}">${label}</span>
+                    <span class="detection-confidence">${(detection.confidence * 100).toFixed(0)}%</span>
+                </div>
+                <span class="detection-position">${posText}</span>
+            </div>`;
+        }
+        
+        // Draw bounding box if the detection has valid bbox
+        if (detection.bbox && Array.isArray(detection.bbox) && detection.bbox.length === 4) {
+            try {
+                // Parse bbox coordinates
+                const [x1, y1, x2, y2] = detection.bbox.map(Number);
+                
+                // Generate a hash color based on label
+                const labelHash = label.split('').reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 0xffffff, 0);
+                const color = `rgb(${(labelHash * 123) % 255}, ${(labelHash * 147) % 255}, ${(labelHash * 109) % 255})`;
+                
+                // Create and position a div for the bounding box
+                const boxDiv = document.createElement('div');
+                boxDiv.className = 'detection-box';
+                boxDiv.style.top = `${(y1 / containerHeight) * 100}%`;
+                boxDiv.style.left = `${(x1 / containerWidth) * 100}%`;
+                boxDiv.style.width = `${((x2 - x1) / containerWidth) * 100}%`;
+                boxDiv.style.height = `${((y2 - y1) / containerHeight) * 100}%`;
+                boxDiv.style.borderColor = color;
+                boxDiv.style.borderWidth = '3px'; // Thicker border for better visibility
+                boxDiv.dataset.label = label;
+                
+                // Add an indicator that the object is being mapped in 3D if it has valid position
+                if (detection.position_3d && Array.isArray(detection.position_3d) && 
+                    !detection.position_3d.every(v => v === 0)) {
+                    const indicator = document.createElement('div');
+                    indicator.style.position = 'absolute';
+                    indicator.style.top = '0';
+                    indicator.style.right = '0';
+                    indicator.style.width = '12px';
+                    indicator.style.height = '12px';
+                    indicator.style.borderRadius = '50%';
+                    indicator.style.backgroundColor = '#00ff00';
+                    indicator.style.border = '1px solid white';
+                    indicator.title = `3D Position: X=${detection.position_3d[0].toFixed(2)}, Y=${detection.position_3d[1].toFixed(2)}, Z=${detection.position_3d[2].toFixed(2)}`;
+                    boxDiv.appendChild(indicator);
+                }
+                
+                // Add to video container
+                videoContainer.appendChild(boxDiv);
+                
+                console.log(`Drawing bbox for ${label}: x1=${x1}, y1=${y1}, x2=${x2}, y2=${y2}, position_3d=${JSON.stringify(detection.position_3d)}`);
+            } catch (error) {
+                console.error(`Error drawing bounding box for detection ${index}:`, error);
+            }
+        } else {
+            console.warn(`Detection ${index} missing valid bbox:`, detection.bbox);
+        }
     });
     
-    detectionInfoElement.innerHTML = html;
+    // Update detection info element with labels if enabled
+    if (showLabels) {
+        detectionInfoElement.innerHTML = html;
+        detectionInfoElement.style.display = 'block';
+    } else {
+        detectionInfoElement.style.display = 'none';
+    }
 }
 
 /**

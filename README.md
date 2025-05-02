@@ -6,6 +6,11 @@
 
 A Python package for 3D object detection and spatial mapping using a webcam, combining YOLO object detection with monocular depth estimation.
 
+<div align="center">
+  <img src="docs/screenshots/spatial_detector_demo.png" alt="Spatial Detector Demo" width="80%">
+  <p><em>Spatial Detector in action: 2D object detection with 3D mapping visualization</em></p>
+</div>
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -70,6 +75,11 @@ The project uses YOLOv8 for object detection and MiDaS for depth estimation, wit
 - [PyTorch](https://pytorch.org/get-started/locally/) 1.13 or later
 - OpenCV 4.5 or later
 
+<div align="center">
+  <img src="docs/screenshots/prerequisites.png" alt="Prerequisites" width="70%">
+  <p><em>Development environment setup with required dependencies</em></p>
+</div>
+
 ### Option 1: Install from PyPI (Recommended)
 
 ```bash
@@ -104,6 +114,11 @@ pip install -e ".[dev,web]"
 uv pip install -e ".[dev,web]"
 ```
 
+<div align="center">
+  <img src="docs/screenshots/installation.png" alt="Installation" width="70%">
+  <p><em>Successful installation with all dependencies loaded</em></p>
+</div>
+
 ## Quick Start
 
 After installation, run one of the applications with default settings:
@@ -122,11 +137,21 @@ The desktop application will:
 3. Initialize the MiDaS depth estimator
 4. Show both the main detection view and a top-down spatial map
 
+<div align="center">
+  <img src="docs/screenshots/desktop_app.png" alt="Desktop Application" width="70%">
+  <p><em>Desktop application showing 2D detection with depth visualization</em></p>
+</div>
+
 The web interface will:
-1. Start a web server on http://localhost:5000
+1. Start a web server on http://localhost:5011
 2. Provide a user-friendly interface accessible from any browser
 3. Support iPhone camera streaming via QR code pairing
 4. Offer enhanced 3D visualization with interactive controls
+
+<div align="center">
+  <img src="docs/screenshots/web_interface.png" alt="Web Interface" width="70%">
+  <p><em>Web interface showing detection and 3D mapping with interactive controls</em></p>
+</div>
 
 ## Usage
 
@@ -188,6 +213,11 @@ The web interface is accessible at `http://localhost:5011` by default (or the ho
 
 The web-based user interface offers a more user-friendly way to use Spatial Detector:
 
+<div align="center">
+  <img src="docs/screenshots/web_ui_components.png" alt="Web UI Components" width="70%">
+  <p><em>Web UI components showing control panel, visualization area, and 3D map</em></p>
+</div>
+
 #### Features
 
 - **Setup Wizard**: Guided onboarding for new users
@@ -209,11 +239,21 @@ To use your iPhone as a camera source:
 5. Follow the prompts on your iPhone to allow camera access
 6. Start using your iPhone as a high-quality camera source
 
+<div align="center">
+  <img src="docs/screenshots/iphone_integration.png" alt="iPhone Integration" width="70%">
+  <p><em>iPhone camera streaming via QR code pairing process</em></p>
+</div>
+
 The iPhone integration uses web technologies for low-latency, high-quality video streaming.
 
 #### 3D Visualization
 
 The web interface includes an advanced 3D visualization system:
+
+<div align="center">
+  <img src="docs/screenshots/3d_visualization.png" alt="3D Visualization" width="70%">
+  <p><em>3D visualization showing detected objects in a spatial environment</em></p>
+</div>
 
 - **Interactive Controls**: Rotate, pan, and zoom the 3D view
 - **Object Tracking**: Track detected objects in 3D space
@@ -415,16 +455,26 @@ Spatial Detector follows a modular design with these core components:
 
 For accurate real-world measurements, Spatial Detector includes a calibration workflow:
 
+<div align="center">
+  <img src="docs/screenshots/calibration_mode.png" alt="Calibration Mode" width="70%">
+  <p><em>Calibration interface showing distance adjustment and crosshair alignment</em></p>
+</div>
+
 ### Depth Calibration
 
-1. Enter calibration mode by pressing `c`
+1. Enter calibration mode by pressing `c` or clicking the "Start Calibration" button in the web interface
 2. Place an object at a known distance from the camera (e.g., 1 meter)
 3. Use `+`/`-` keys to adjust the displayed distance to match the actual distance
 4. Align the object with the center crosshair
 5. Press `space` to set the calibration point
-6. Press `s` to save the calibration to a file
+6. Press `s` or click "Save Calibration" to save the calibration to a file
 
 Calibration is saved to `depth_calibration.json` by default or to the file specified with `--depth-calibration`.
+
+<div align="center">
+  <img src="docs/screenshots/depth_calibration.png" alt="Depth Calibration Results" width="70%">
+  <p><em>Depth calibration results showing improved distance measurements</em></p>
+</div>
 
 ### Camera Calibration (Advanced)
 
@@ -441,6 +491,11 @@ For even more accurate 3D positioning, you can provide a camera calibration file
    }
    ```
 3. Provide the file path using the `--calibration` option
+
+<div align="center">
+  <img src="docs/screenshots/camera_calibration.png" alt="Camera Calibration" width="70%">
+  <p><em>Advanced camera calibration with intrinsic parameters visualization</em></p>
+</div>
 
 ## API Reference
 
@@ -642,6 +697,11 @@ For detailed release management instructions, see [RELEASE_GUIDE.md](RELEASE_GUI
 
 ## Troubleshooting
 
+<div align="center">
+  <img src="docs/screenshots/troubleshooting.png" alt="Troubleshooting" width="70%">
+  <p><em>Troubleshooting interface showing error messages and diagnostics</em></p>
+</div>
+
 ### Common Issues
 
 #### Installation Problems
@@ -664,14 +724,35 @@ For detailed release management instructions, see [RELEASE_GUIDE.md](RELEASE_GUI
 
 - **Camera not found**: Check your camera index (--camera option) and permissions.
 
+- **"NoneType object has no attribute pixel_to_3d"**: This error occurs when the camera model is not initialized properly. Restart the application or switch to a different camera source.
+
+- **No objects appear in 3D map**: Ensure depth values are valid and make sure the objects are within the detection range. Try calibrating your depth sensor for better accuracy.
+
+- **WebSocket errors**: If you see WebSocket connection issues in the browser console, check for network firewall settings or try a different browser.
+
+- **Bounding boxes not showing**: This could be due to CSS rendering issues. Try refreshing the page or adjusting the browser zoom level.
+
 ### Performance Optimization
 
-- For Apple Silicon: Make sure to use the MPS backend (--device mps)
-- For NVIDIA GPUs: Ensure CUDA is properly installed (--device cuda)
-- Use an appropriate YOLO model size for your hardware:
+<div align="center">
+  <img src="docs/screenshots/performance_optimization.png" alt="Performance Optimization" width="70%">
+  <p><em>Performance monitoring dashboard showing optimization opportunities</em></p>
+</div>
+
+- **Model caching**: The latest version includes model caching to improve startup time and reduce memory usage for repeated initializations.
+
+- **For Apple Silicon**: Make sure to use the MPS backend (--device mps)
+
+- **For NVIDIA GPUs**: Ensure CUDA is properly installed (--device cuda)
+
+- **Use an appropriate YOLO model size for your hardware**:
   - Low-end: yolov8n.pt
   - Mid-range: yolov8s.pt
   - High-end: yolov8m.pt or yolov8l.pt
+  
+- **Reduce processing resolution**: Lower the camera resolution for faster processing: `--width 640 --height 480`
+
+- **WebSocket optimization**: The latest version includes optimized WebSocket communication to reduce latency and improve real-time performance.
 
 ## License
 

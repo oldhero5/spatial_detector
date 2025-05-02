@@ -185,6 +185,27 @@ class WebServer:
                 del self.client_streams[client_sid]
                 self.logger.info(f"Removed stream: {client_sid}")
             
+            # If the active stream disconnected, choose a new one if available
+            if client_sid == self.active_stream_id:
+                if self.client_streams:
+                    # Select the first available stream as active
+                    new_active_id = next(iter(self.client_streams))
+                    stream_info = self.client_streams[new_active_id]
+                    self.active_stream_id = new_active_id
+                    
+                    # Reinitialize the camera model with the new stream's dimensions
+                    try:
+                        self.logger.info(f"Reinitializing detector for new active stream: {new_active_id}")
+                        self.initialize_detector(stream_info["width"], stream_info["height"])
+                    except Exception as reinit_error:
+                        self.logger.error(f"Error reinitializing detector for new stream: {reinit_error}")
+                else:
+                    # No more streams, clear active stream
+                    self.active_stream_id = None
+                    
+                    # Don't clear the camera model so it can be used if needed
+                    # This prevents NoneType errors if frames arrive late
+            
             if not self.client_streams and self.is_processing:
                 try:
                     # Use safe version that won't try to join current thread
@@ -289,11 +310,26 @@ class WebServer:
                     progress_callback=progress_callback
                 )
             
-            # Create camera model
-            self.camera = camera_model.PinholeCamera(width, height)
+            # Create or update camera model
+            try:
+                self.logger.info(f"Initializing camera model with dimensions {width}x{height}")
+                self.camera = camera_model.PinholeCamera(width, height)
+                self.logger.info("Camera model initialized successfully")
+            except Exception as cam_error:
+                self.logger.error(f"Error initializing camera model: {cam_error}")
+                # If we already have a camera model, keep using it rather than setting to None
+                if self.camera is None:
+                    self.logger.error("No previous camera model available - some 3D features may not work")
+                else:
+                    self.logger.warning("Using previous camera model as fallback")
             
             # Initialize visualizer
-            self.vis = visualizer.Visualizer()
+            try:
+                self.vis = visualizer.Visualizer()
+                self.logger.info("Visualizer initialized successfully")
+            except Exception as viz_init_error:
+                self.logger.error(f"Error initializing visualizer: {viz_init_error}")
+                self.vis = None
             
             self.logger.info("Detector components initialized")
             self.socketio.emit('initialization_status', {
@@ -315,6 +351,17 @@ class WebServer:
         
         while self.is_processing:
             if self.frame_buffer is not None and self.active_stream_id:
+                # Ensure all required components are initialized before processing
+                if self.camera is None and self.frame_buffer is not None:
+                    self.logger.warning("Camera model is None, attempting to initialize before processing")
+                    try:
+                        # Get dimensions from the current frame
+                        height, width = self.frame_buffer.shape[:2]
+                        self.camera = camera_model.PinholeCamera(width, height)
+                        self.logger.info(f"Camera model initialized with dimensions {width}x{height}")
+                    except Exception as init_error:
+                        self.logger.error(f"Failed to initialize camera model: {init_error}")
+                        # Continue processing but log the error - we'll try again for each detection
                 try:
                     # Make a copy to avoid race conditions
                     frame = self.frame_buffer.copy()
@@ -326,6 +373,14 @@ class WebServer:
                     depth_map, depth_norm = self.depth_estimator.estimate_depth(frame)
                     
                     # Update frame with visualizations
+                    if self.vis is None:
+                        self.logger.warning("Visualizer is None, reinitializing...")
+                        try:
+                            self.vis = visualizer.Visualizer()
+                            self.logger.info("Visualizer reinitialized successfully")
+                        except Exception as viz_reinit_error:
+                            self.logger.error(f"Failed to reinitialize visualizer: {viz_reinit_error}")
+                    
                     if self.vis:
                         # Get 3D positions for detections
                         for detection in detections:
@@ -354,22 +409,81 @@ class WebServer:
                                 
                                 # Convert to 3D coordinates
                                 if depth is not None and not np.isnan(depth):
-                                    # Use depth scale to convert to meaningful depth
-                                    world_coords = self.camera.pixel_to_3d(
-                                        center_x, center_y, depth, 
-                                        normalized_depth=True,
-                                        depth_scale=5.0  # Scale for better visualization
-                                    )
-                                    
-                                    # Store as tuple for consistency
-                                    detection['position_3d'] = tuple(float(v) for v in world_coords)
-                                    self.logger.debug(f"3D position for {detection.get('class_name')}: {detection['position_3d']}")
+                                    try:
+                                        # Check if camera model is available
+                                        if self.camera is None:
+                                            self.logger.error("Camera model is None, reinitializing...")
+                                            # Get dimensions from the current frame
+                                            height, width = frame.shape[:2]
+                                            try:
+                                                self.camera = camera_model.PinholeCamera(width, height)
+                                                self.logger.info(f"Camera model reinitialized with dimensions {width}x{height}")
+                                            except Exception as camera_init_error:
+                                                self.logger.error(f"Failed to reinitialize camera model: {camera_init_error}")
+                                                detection['position_3d'] = [0.0, 0.0, 0.0]
+                                                continue
+                                        
+                                        # Double-check camera model is still available (could be changed by another thread)
+                                        if self.camera is None:
+                                            self.logger.error("Camera model is still None after reinitialization attempt")
+                                            detection['position_3d'] = [0.0, 0.0, 0.0]
+                                            continue
+                                                
+                                        # Now safely attempt to get 3D positions using calibrated depth
+                                        try:
+                                            world_coords = self.camera.pixel_to_3d(
+                                                center_x, center_y, depth, 
+                                                normalized_depth=True,
+                                                depth_scale=5.0  # Use more realistic scale for better real-world positioning
+                                            )
+                                        except AttributeError as attr_err:
+                                            # This can happen if camera becomes None between the check and the call (race condition)
+                                            self.logger.error(f"AttributeError accessing camera model: {attr_err}")
+                                            detection['position_3d'] = [0.0, 0.0, 0.0]
+                                            continue
+                                        except Exception as pixel_err:
+                                            self.logger.error(f"Error in pixel_to_3d: {pixel_err}")
+                                            detection['position_3d'] = [0.0, 0.0, 0.0]
+                                            continue
+                                        
+                                        # Check if world_coords is valid (not None)
+                                        if world_coords is not None:
+                                            try:
+                                                # Convert each coordinate to float explicitly with safe unpacking
+                                                if isinstance(world_coords, (list, tuple)) and len(world_coords) >= 3:
+                                                    x, y, z = world_coords
+                                                    float_x = float(x)
+                                                    float_y = float(y)
+                                                    float_z = float(z)
+                                                    
+                                                    # Verify these are valid numbers
+                                                    if not np.isnan(float_x) and not np.isnan(float_y) and not np.isnan(float_z):
+                                                        # Store as list of floats for JavaScript compatibility
+                                                        detection['position_3d'] = [float_x, float_y, float_z]
+                                                        self.logger.debug(f"3D position for {detection.get('class_name')}: {detection['position_3d']}")
+                                                    else:
+                                                        self.logger.warning(f"NaN values in world coordinates: {world_coords}")
+                                                        detection['position_3d'] = [0.0, 0.0, 0.0]
+                                                else:
+                                                    # Handle the case when world_coords is not iterable or has wrong length
+                                                    self.logger.warning(f"Invalid world_coords format: {type(world_coords)}, value: {world_coords}")
+                                                    detection['position_3d'] = [0.0, 0.0, 0.0]
+                                            except (TypeError, ValueError) as e:
+                                                # Catch any unpacking errors
+                                                self.logger.error(f"Error unpacking world_coords: {e}, value: {world_coords}")
+                                                detection['position_3d'] = [0.0, 0.0, 0.0]
+                                        else:
+                                            self.logger.debug(f"Invalid 3D coordinates calculated for detection at ({center_x}, {center_y})")
+                                            detection['position_3d'] = [0.0, 0.0, 0.0]
+                                    except Exception as coord_err:
+                                        self.logger.error(f"Error calculating 3D coordinates: {coord_err}")
+                                        detection['position_3d'] = [0.0, 0.0, 0.0]
                                 else:
                                     self.logger.debug(f"No valid depth for detection at ({center_x}, {center_y})")
-                                    detection['position_3d'] = (0, 0, 0)
+                                    detection['position_3d'] = [0.0, 0.0, 0.0]
                             except Exception as pos_error:
                                 self.logger.error(f"Error calculating 3D position: {pos_error}")
-                                detection['position_3d'] = (0, 0, 0)
+                                detection['position_3d'] = [0.0, 0.0, 0.0]
                         
                         # Debug detection data
                     self.logger.debug(f"Processing {len(detections)} detections")
@@ -402,11 +516,28 @@ class WebServer:
                     
                     for d in detections:
                         try:
+                            # Ensure bbox is valid before including the detection
+                            bbox = d.get('bbox')
+                            if not bbox or len(bbox) != 4:
+                                self.logger.warning(f"Detection missing valid bbox: {d.get('class_name')}")
+                                continue
+                                
+                            # Ensure all bbox values are numeric
+                            try:
+                                bbox_values = [float(v) for v in bbox]
+                                # Ensure bbox values are within frame
+                                if any(v < 0 for v in bbox_values[:2]) or any(v > 5000 for v in bbox_values[2:]):
+                                    self.logger.warning(f"Detection has out-of-bounds bbox: {bbox_values}")
+                                    continue
+                            except (ValueError, TypeError):
+                                self.logger.warning(f"Non-numeric values in bbox: {bbox}")
+                                continue
+                                
                             # Basic required fields
                             data = {
                                 "label": d.get('class_name', 'unknown'),
                                 "confidence": float(d.get('confidence', 0.0)),
-                                "bbox": [float(v) for v in d.get('bbox', [0, 0, 0, 0])],
+                                "bbox": bbox_values,
                                 "position_3d": None
                             }
                             
@@ -414,16 +545,29 @@ class WebServer:
                             if 'position_3d' in d and d['position_3d'] is not None:
                                 pos = d['position_3d']
                                 if isinstance(pos, (list, tuple)) and len(pos) >= 3:
-                                    # Convert all position values to float
-                                    pos_data = [float(v) for v in pos[:3]]
-                                    
-                                    # Check if values are valid
-                                    if all(not np.isnan(v) for v in pos_data) and all(np.abs(v) < 1000 for v in pos_data):
-                                        data["position_3d"] = pos_data
-                                    else:
-                                        self.logger.warning(f"Invalid position values: {pos_data}")
+                                    # Convert all position values to float and validate each one
+                                    try:
+                                        pos_data = [float(v) for v in pos[:3]]
+                                        
+                                        # Check for any invalid values
+                                        if any(np.isnan(v) for v in pos_data) or any(np.isinf(v) for v in pos_data):
+                                            self.logger.warning(f"NaN or Inf in position data: {pos_data}")
+                                            # Use zeros instead of None to ensure position_3d is always an array
+                                            data["position_3d"] = [0.0, 0.0, 0.0]
+                                        elif all(np.abs(v) < 1000 for v in pos_data):
+                                            data["position_3d"] = pos_data
+                                        else:
+                                            self.logger.warning(f"Position values out of range: {pos_data}")
+                                            data["position_3d"] = [0.0, 0.0, 0.0]
+                                    except (ValueError, TypeError) as val_err:
+                                        self.logger.warning(f"Error converting position values: {val_err}")
+                                        data["position_3d"] = [0.0, 0.0, 0.0]
                                 else:
                                     self.logger.warning(f"Invalid position format: {pos}")
+                                    data["position_3d"] = [0.0, 0.0, 0.0]
+                            else:
+                                # Always include position_3d array even if empty
+                                data["position_3d"] = [0.0, 0.0, 0.0]
                             
                             detection_data.append(data)
                             
