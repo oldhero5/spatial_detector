@@ -49,7 +49,8 @@ function initWizardEvents() {
     
     // Source selection
     sourceButtons.forEach(button => {
-        button.addEventListener('click', () => {
+        button.addEventListener('click', (e) => {
+            e.stopPropagation();
             selectedSource = button.dataset.source;
             sourceButtons.forEach(b => b.classList.remove('selected'));
             button.classList.add('selected');
@@ -78,6 +79,15 @@ function initWizardEvents() {
         
         // Start camera preview
         try {
+            // Check if mediaDevices is available
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.error('getUserMedia not available');
+                console.error('Current protocol:', window.location.protocol);
+                console.error('navigator.mediaDevices:', navigator.mediaDevices);
+                alert('Camera access not available. Please ensure you are using HTTPS and have accepted the security certificate.');
+                return;
+            }
+
             const deviceId = wizardCameraSelect.value;
             const constraints = {
                 video: deviceId ? { deviceId: { exact: deviceId } } : true
@@ -183,6 +193,16 @@ function navigateWizard(direction) {
  */
 async function populateWizardCameraSelect() {
     try {
+        // Check if mediaDevices is available
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+            console.error('enumerateDevices not available');
+            console.error('Current protocol:', window.location.protocol);
+            console.error('navigator.mediaDevices:', navigator.mediaDevices);
+            wizardCameraSelect.innerHTML = '<option>Camera access not available</option>';
+            wizardCameraSelect.disabled = true;
+            return;
+        }
+
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = devices.filter(device => device.kind === 'videoinput');
         
@@ -207,22 +227,53 @@ async function populateWizardCameraSelect() {
  * Generate connection code for iPhone
  */
 function generateWizardConnectionCode() {
-    const connectionUrl = `${window.location.origin}/connect/${Date.now()}`;
-    
-    // Display the connection URL
-    wizardDirectLink.textContent = connectionUrl;
-    
-    // In a real implementation, this would create an actual QR code
-    // Here we'll just display the URL for demonstration
+    // Show loading state
     wizardQrCode.innerHTML = `
-        <div style="padding: 10px; background: white; border: 1px solid #ccc;">
-            <p style="text-align: center;">QR Code for:</p>
-            <p style="text-align: center; font-size: 12px;">${connectionUrl}</p>
+        <div class="loading-indicator">
+            <div class="loading-spinner"></div>
+            <span>Generating QR code...</span>
         </div>
     `;
     
-    // Enable next button
-    wizardNextButton.disabled = false;
+    // Fetch QR code from server
+    fetch('/api/qrcode')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to generate QR code');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data && data.qr_code) {
+                // Display the QR code
+                wizardQrCode.innerHTML = `
+                    <img src="data:image/png;base64,${data.qr_code}" alt="Connection QR Code" style="max-width: 200px; max-height: 200px;">
+                `;
+                
+                // Display the connection URL
+                const connectionUrl = data.url || window.location.origin;
+                wizardDirectLink.textContent = connectionUrl;
+                
+                // Enable next button
+                wizardNextButton.disabled = false;
+            } else {
+                throw new Error('Invalid QR code data');
+            }
+        })
+        .catch(error => {
+            console.error('Error generating QR code:', error);
+            // Fallback to text display
+            const connectionUrl = `${window.location.origin}/connect/${Date.now()}`;
+            wizardDirectLink.textContent = connectionUrl;
+            wizardQrCode.innerHTML = `
+                <div style="padding: 20px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px;">
+                    <p style="text-align: center; color: #666;">QR Code generation failed</p>
+                    <p style="text-align: center; font-size: 14px; margin-top: 10px;">Use the link below instead</p>
+                </div>
+            `;
+            // Still enable next button for fallback
+            wizardNextButton.disabled = false;
+        });
 }
 
 /**

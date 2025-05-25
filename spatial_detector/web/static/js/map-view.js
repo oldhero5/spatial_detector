@@ -92,12 +92,12 @@ class MapView {
         // Add to scene
         this.scene.add(this.ground);
         
-        // Add a colored marker at the origin (camera location)
-        const originGeometry = new THREE.SphereGeometry(0.1, 16, 16);
-        const originMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        const originMarker = new THREE.Mesh(originGeometry, originMaterial);
-        originMarker.position.set(0, 0, 0);
-        this.scene.add(originMarker);
+        // Don't add origin marker for production
+        // const originGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+        // const originMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        // const originMarker = new THREE.Mesh(originGeometry, originMaterial);
+        // originMarker.position.set(0, 0, 0);
+        // this.scene.add(originMarker);
         
         console.log("Ground plane and origin marker added to scene");
     }
@@ -166,6 +166,7 @@ class MapView {
     updateObjects(detections) {
         // Debugging
         console.log('Updating 3D map with detections:', detections);
+        console.log('First detection sample:', detections[0]); // Log detailed first detection
         if (!Array.isArray(detections) || detections.length === 0) {
             console.log("No valid detections to update map with");
             return; // Nothing to update
@@ -210,9 +211,8 @@ class MapView {
                 // Add debug logging
                 console.log(`Map-view object position: x=${x}, y=${y}, z=${z}, typeof x=${typeof x}`);
                 
-                // Skip if position is invalid or all zeros (default fallback value)
-                if (isNaN(x) || isNaN(y) || isNaN(z) || 
-                    (x === 0 && y === 0 && z === 0)) {
+                // Skip if position is invalid (use null as invalid marker, not 0,0,0)
+                if (isNaN(x) || isNaN(y) || isNaN(z)) {
                     console.warn('Detection has invalid position coordinates:', pos3d);
                     return;
                 }
@@ -274,6 +274,30 @@ class MapView {
                 this.objects.delete(id);
             }
         });
+    }
+    
+    /**
+     * Clear all objects from the 3D map
+     */
+    clearAllObjects() {
+        // Remove all objects and their labels
+        this.objects.forEach((object, id) => {
+            // Remove label if it exists
+            if (object.userData.label) {
+                if (document.body.contains(object.userData.label.element)) {
+                    document.body.removeChild(object.userData.label.element);
+                }
+                this.scene.remove(object.userData.label);
+            }
+            
+            // Remove object from scene
+            this.scene.remove(object);
+        });
+        
+        // Clear the objects map
+        this.objects.clear();
+        
+        console.log("Cleared all objects from 3D map");
     }
     
     /**

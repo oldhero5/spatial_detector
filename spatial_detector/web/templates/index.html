@@ -182,9 +182,13 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <!-- Refactored modular app -->
+    <script type="module" src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <!-- Legacy scripts - to be fully migrated -->
     <script src="{{ url_for('static', filename='js/map-view.js') }}"></script>
     <script src="{{ url_for('static', filename='js/camera.js') }}"></script>
     <script src="{{ url_for('static', filename='js/wizard.js') }}"></script>
+    <!-- Keep main.js temporarily for backward compatibility -->
+    <!-- <script src="{{ url_for('static', filename='js/main.js') }}"></script> -->
 </body>
 </html>

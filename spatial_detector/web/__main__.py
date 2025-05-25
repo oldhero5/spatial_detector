@@ -4,6 +4,7 @@ Main entry point for the Spatial Detector web interface
 
 import argparse
 import sys
+
 from spatial_detector.web.server import WebServer
 
 
@@ -47,7 +48,9 @@ def main():
             static_folder=args.static,
             template_folder=args.templates,
         )
-        print(f"Starting Spatial Detector Web Interface on http://{args.host}:{args.port}")
+        print(
+            f"Starting Spatial Detector Web Interface on http://{args.host}:{args.port}"
+        )
         print("Press Ctrl+C to exit")
         server.start()
     except KeyboardInterrupt:

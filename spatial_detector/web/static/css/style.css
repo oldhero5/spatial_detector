@@ -578,6 +578,7 @@ select:focus {
     color: var(--text-primary);
     transition: all 0.3s;
     border: 1px solid var(--border-color);
+    cursor: pointer;
 }
 
 .source-button:hover {
@@ -586,6 +587,13 @@ select:focus {
     transform: translateY(-8px);
     box-shadow: var(--hover-shadow);
     border-color: transparent;
+}
+
+.source-button.selected {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: transparent;
+    box-shadow: 0 4px 8px rgba(74, 144, 226, 0.3);
 }
 
 .source-button .icon {

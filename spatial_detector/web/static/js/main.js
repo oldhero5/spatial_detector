@@ -133,15 +133,19 @@ function initSocketConnection() {
             }
             
             // Check for position_3d in detections and validate with more lenient criteria
-            // Don't filter out zero positions as they might be valid for the origin or near the origin
-            let validDetections = data.detections.filter(d => 
-                d.position_3d && 
-                Array.isArray(d.position_3d) &&
-                d.position_3d.length >= 3 &&
-                d.position_3d.every(v => !isNaN(parseFloat(v)))
-                // Don't require non-zero values as that might filter out valid positions
-                // !(d.position_3d[0] === 0 && d.position_3d[1] === 0 && d.position_3d[2] === 0)
-            );
+            // Only filter out detections with null or invalid position_3d
+            let validDetections = data.detections.filter(d => {
+                // Position can be null if depth estimation failed
+                if (!d.position_3d || d.position_3d === null) {
+                    return false;
+                }
+                // Check if it's a valid array with 3 numeric values
+                if (!Array.isArray(d.position_3d) || d.position_3d.length < 3) {
+                    return false;
+                }
+                // All values must be valid numbers (including 0)
+                return d.position_3d.every(v => typeof v === 'number' && !isNaN(v));
+            });
             
             if (data.detections.length > 0 && validDetections.length === 0) {
                 console.warn("All detections missing valid position_3d data");
@@ -303,11 +307,11 @@ function initEventListeners() {
                     window.mapView = new MapView('map-container');
                     showStatusMessage('success', 'Map view initialized');
                     
-                    // Add test objects to verify rendering is working
-                    window.mapView.addTestObject();
+                    // Don't add test objects for production - only real detections
+                    // window.mapView.addTestObject();
                     
                     // Log MapView initialization success
-                    console.log("MapView initialized successfully with test objects");
+                    console.log("MapView initialized successfully");
                 } catch (error) {
                     console.error("Error initializing map view:", error);
                     showStatusMessage('error', 'Failed to initialize map view: ' + error.message);
@@ -347,14 +351,12 @@ function initEventListeners() {
                         window.mapView.camera.aspect = mapContainer.clientWidth / mapContainer.clientHeight;
                         window.mapView.camera.updateProjectionMatrix();
                         
-                        // Add test objects via the dedicated method instead of adding them here
-                        // This ensures they're placed consistently with our new coordinate system
-                        if (window.mapView.addTestObject) {
-                            window.mapView.addTestObject();
-                            console.log("Added test objects to scene for visibility reference");
-                        } else {
-                            console.warn("addTestObject method not available on mapView");
-                        }
+                        // Don't add test objects on initialization - only real detections
+                        // Comment out for production use
+                        // if (window.mapView.addTestObject) {
+                        //     window.mapView.addTestObject();
+                        //     console.log("Added test objects to scene for visibility reference");
+                        // }
                         
                         // Force render the scene
                         window.mapView.renderer.render(window.mapView.scene, window.mapView.camera);
@@ -609,6 +611,45 @@ function updateDetectionInfo(detections) {
         detectionInfoElement.style.display = 'none';
     }
 }
+
+/**
+ * Clear all detections from the UI
+ */
+function clearDetections() {
+    // Clear bounding boxes
+    const videoContainer = document.getElementById('video-container');
+    if (videoContainer) {
+        const existingBoxes = videoContainer.querySelectorAll('.detection-box');
+        existingBoxes.forEach(box => box.remove());
+    }
+    
+    // Clear detection info
+    if (detectionInfoElement) {
+        detectionInfoElement.innerHTML = '';
+        detectionInfoElement.style.display = 'none';
+    }
+    
+    // Clear the stream view image
+    if (streamView) {
+        streamView.src = '';
+        streamView.style.display = 'none';
+    }
+    
+    // Clear lastDetections array
+    lastDetections = [];
+    
+    // Reset FPS counter
+    frameCount = 0;
+    fps = 0;
+    if (fpsCounter) {
+        fpsCounter.textContent = '0 FPS';
+    }
+    
+    console.log('Cleared all detections from UI');
+}
+
+// Make it globally accessible
+window.clearDetections = clearDetections;
 
 /**
  * Toggle calibration mode
