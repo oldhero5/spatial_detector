@@ -2,7 +2,7 @@
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python Versions](https://img.shields.io/badge/python-3.7%2B-blue)
-![Version](https://img.shields.io/badge/version-0.1.0-green)
+![Version](https://img.shields.io/badge/version-0.1.1-green)
 
 A Python package for 3D object detection and spatial mapping using a webcam, combining YOLO object detection with monocular depth estimation.
 
@@ -67,6 +67,14 @@ The project uses YOLOv8 for object detection and MiDaS for depth estimation, wit
 - **Spatial Mapping**: Create top-down views of your environment with detected objects
 - **WebSocket/Socket.IO**: Real-time communication between client and server
 - **QR Code Pairing**: Simple device connection for mobile devices
+
+### Recent Updates (v0.1.1)
+- **Improved Performance**: Refactored web application for better performance and stability
+- **Enhanced UI**: Modularized JavaScript code for improved maintainability
+- **Fixed Socket.IO Issues**: Stabilized WebSocket connections and error handling
+- **Better Bounding Box Rendering**: Fixed rendering issues and improved visual quality
+- **3D Map Display Improvements**: Enhanced 3D visualization with better object tracking
+- **Error Handling**: Added comprehensive error handling for depth estimation
 
 ## Installation
 
@@ -728,9 +736,13 @@ For detailed release management instructions, see [RELEASE_GUIDE.md](RELEASE_GUI
 
 - **No objects appear in 3D map**: Ensure depth values are valid and make sure the objects are within the detection range. Try calibrating your depth sensor for better accuracy.
 
-- **WebSocket errors**: If you see WebSocket connection issues in the browser console, check for network firewall settings or try a different browser.
+- **WebSocket errors**: If you see WebSocket connection issues in the browser console, check for network firewall settings or try a different browser. The latest version includes improved error handling for Socket.IO connections.
 
-- **Bounding boxes not showing**: This could be due to CSS rendering issues. Try refreshing the page or adjusting the browser zoom level.
+- **Bounding boxes not showing**: This could be due to CSS rendering issues. Try refreshing the page or adjusting the browser zoom level. Recent updates have improved bounding box rendering stability.
+
+- **Detection processor errors**: If you see "Cannot read properties of undefined" errors, this has been fixed in v0.1.1 with better null checking and error handling.
+
+- **3D map not updating**: Ensure position_3d values are valid (not None, NaN, or (0,0,0)). The latest version includes better validation for 3D positions.
 
 ### Performance Optimization
 
@@ -753,6 +765,10 @@ For detailed release management instructions, see [RELEASE_GUIDE.md](RELEASE_GUI
 - **Reduce processing resolution**: Lower the camera resolution for faster processing: `--width 640 --height 480`
 
 - **WebSocket optimization**: The latest version includes optimized WebSocket communication to reduce latency and improve real-time performance.
+
+- **JavaScript Performance**: v0.1.1 includes modularized JavaScript code that improves browser performance and reduces memory usage in the web interface.
+
+- **Connection Stability**: Improved connection manager handles reconnections more gracefully, reducing dropped frames and improving overall stability.
 
 ## License
 
