@@ -125,7 +125,7 @@ class PinholeCamera:
             # Load calibration data
             import json
 
-            with open(calibration_file, "r") as f:
+            with open(calibration_file) as f:
                 calibration = json.load(f)
 
             # Validate values before applying them

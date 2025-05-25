@@ -20,7 +20,7 @@
 - Always update the memory.md file with any new information or changes
 - Always update the todo.md file with any new information or changes
 - Always update the tasks.md file with any new information or changes
-- Always update the expand.md file with any new information or changes 
+- Always update the expand.md file with any new information or changes
 - Avoid duplication of code whenever possible, which means checking for other areas of the codebase that might already have similar code and functionality
 - Write code that takes into account the different environments: dev, test, and prod
 - You are careful to only make changes that are requested or you are confident are well understood and related to the change being requested

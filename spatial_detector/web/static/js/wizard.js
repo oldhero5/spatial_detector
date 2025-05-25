@@ -37,16 +37,16 @@ function initWizardEvents() {
     wizardCloseButton.addEventListener('click', () => {
         closeWizard();
     });
-    
+
     // Navigation buttons
     wizardPrevButton.addEventListener('click', () => {
         navigateWizard(-1);
     });
-    
+
     wizardNextButton.addEventListener('click', () => {
         navigateWizard(1);
     });
-    
+
     // Source selection
     sourceButtons.forEach(button => {
         button.addEventListener('click', (e) => {
@@ -54,12 +54,12 @@ function initWizardEvents() {
             selectedSource = button.dataset.source;
             sourceButtons.forEach(b => b.classList.remove('selected'));
             button.classList.add('selected');
-            
+
             // Enable next button
             wizardNextButton.disabled = false;
         });
     });
-    
+
     // Webcam test
     wizardWebcamTest.addEventListener('click', async () => {
         if (wizardTestStream) {
@@ -67,16 +67,16 @@ function initWizardEvents() {
             wizardTestStream.getTracks().forEach(track => track.stop());
             wizardTestStream = null;
             wizardWebcamTest.textContent = 'Test Camera';
-            
+
             // Clear preview
             const videoElement = wizardWebcamPreview.querySelector('video');
             if (videoElement) {
                 videoElement.srcObject = null;
             }
-            
+
             return;
         }
-        
+
         // Start camera preview
         try {
             // Check if mediaDevices is available
@@ -92,9 +92,9 @@ function initWizardEvents() {
             const constraints = {
                 video: deviceId ? { deviceId: { exact: deviceId } } : true
             };
-            
+
             wizardTestStream = await navigator.mediaDevices.getUserMedia(constraints);
-            
+
             // Create video element if it doesn't exist
             let videoElement = wizardWebcamPreview.querySelector('video');
             if (!videoElement) {
@@ -103,10 +103,10 @@ function initWizardEvents() {
                 videoElement.playsinline = true;
                 wizardWebcamPreview.appendChild(videoElement);
             }
-            
+
             videoElement.srcObject = wizardTestStream;
             wizardWebcamTest.textContent = 'Stop Camera';
-            
+
             // Enable next button
             wizardNextButton.disabled = false;
         } catch (error) {
@@ -114,24 +114,24 @@ function initWizardEvents() {
             alert('Could not start camera: ' + error.message);
         }
     });
-    
+
     // Skip calibration
     wizardSkipCalibration.addEventListener('click', () => {
         navigateWizard(1);
     });
-    
+
     // Start calibration
     wizardStartCalibration.addEventListener('click', () => {
         // In a real implementation, this would start the calibration process
         // For now, just proceed to next step
         navigateWizard(1);
     });
-    
+
     // Finish wizard
     wizardFinish.addEventListener('click', () => {
         completeWizard();
     });
-    
+
     // Populate camera select on wizard load
     populateWizardCameraSelect();
 }
@@ -143,25 +143,25 @@ function navigateWizard(direction) {
     // Hide current step
     const currentStepElement = document.querySelector(`.wizard-step[data-step="${currentStep}"]`);
     const progressIndicators = document.querySelectorAll('.wizard-progress span');
-    
+
     if (currentStepElement) {
         currentStepElement.classList.add('hidden');
     }
-    
+
     // Update step number
     currentStep += direction;
-    
+
     // Handle source-specific steps
     let nextStepSelector = `.wizard-step[data-step="${currentStep}"]`;
     if (currentStep === 2 && selectedSource) {
         nextStepSelector = `.wizard-step[data-step="2-${selectedSource}"]`;
     }
-    
+
     // Show next step
     const nextStepElement = document.querySelector(nextStepSelector);
     if (nextStepElement) {
         nextStepElement.classList.remove('hidden');
-        
+
         // Update progress indicators
         progressIndicators.forEach((indicator, index) => {
             if (index < currentStep) {
@@ -170,17 +170,17 @@ function navigateWizard(direction) {
                 indicator.classList.remove('active');
             }
         });
-        
+
         // Update navigation buttons
         wizardPrevButton.disabled = currentStep === 1;
-        
+
         // Special logic for final step
         if (currentStep === 4) {
             wizardNextButton.classList.add('hidden');
         } else {
             wizardNextButton.classList.remove('hidden');
         }
-        
+
         // Generate iPhone connection code if needed
         if (nextStepSelector === '.wizard-step[data-step="2-iphone"]') {
             generateWizardConnectionCode();
@@ -205,7 +205,7 @@ async function populateWizardCameraSelect() {
 
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videoDevices = devices.filter(device => device.kind === 'videoinput');
-        
+
         // Clear and populate camera select
         wizardCameraSelect.innerHTML = '';
         videoDevices.forEach(device => {
@@ -214,7 +214,7 @@ async function populateWizardCameraSelect() {
             option.text = device.label || `Camera ${wizardCameraSelect.options.length + 1}`;
             wizardCameraSelect.appendChild(option);
         });
-        
+
         if (videoDevices.length > 0) {
             wizardWebcamTest.disabled = false;
         }
@@ -234,7 +234,7 @@ function generateWizardConnectionCode() {
             <span>Generating QR code...</span>
         </div>
     `;
-    
+
     // Fetch QR code from server
     fetch('/api/qrcode')
         .then(response => {
@@ -249,11 +249,11 @@ function generateWizardConnectionCode() {
                 wizardQrCode.innerHTML = `
                     <img src="data:image/png;base64,${data.qr_code}" alt="Connection QR Code" style="max-width: 200px; max-height: 200px;">
                 `;
-                
+
                 // Display the connection URL
                 const connectionUrl = data.url || window.location.origin;
                 wizardDirectLink.textContent = connectionUrl;
-                
+
                 // Enable next button
                 wizardNextButton.disabled = false;
             } else {
@@ -285,7 +285,7 @@ function completeWizard() {
         wizardTestStream.getTracks().forEach(track => track.stop());
         wizardTestStream = null;
     }
-    
+
     // Apply selected settings to main app
     if (selectedSource === 'webcam' && wizardCameraSelect.value) {
         // Set the camera in the main app
@@ -293,16 +293,16 @@ function completeWizard() {
         if (mainCameraSelect) {
             mainCameraSelect.value = wizardCameraSelect.value;
         }
-        
+
         // Start the camera
         if (window.cameraManager) {
             window.cameraManager.startCamera();
         }
     }
-    
+
     // Mark setup as completed
     localStorage.setItem('spatial-detector-setup-completed', 'true');
-    
+
     // Close wizard
     closeWizard();
 }
@@ -316,7 +316,7 @@ function closeWizard() {
         wizardTestStream.getTracks().forEach(track => track.stop());
         wizardTestStream = null;
     }
-    
+
     // Hide wizard
     wizardElement.classList.add('hidden');
 }

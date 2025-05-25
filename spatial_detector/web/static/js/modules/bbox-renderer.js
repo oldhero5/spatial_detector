@@ -1,6 +1,6 @@
 /**
  * BoundingBoxRenderer - Efficient rendering of detection bounding boxes
- * 
+ *
  * Features:
  * - Object pooling for DOM elements
  * - Minimal DOM manipulation
@@ -14,7 +14,7 @@ class BoundingBoxRenderer {
         this.activeBoxes = new Map();
         this.colorMap = new Map();
         this.animationDuration = 150; // ms
-        
+
         // Default colors for common classes
         this.defaultColors = {
             person: '#3498db',
@@ -29,7 +29,7 @@ class BoundingBoxRenderer {
             couch: '#2ecc71',
             default: '#ff6b6b'
         };
-        
+
         // Initialize styles
         this.initStyles();
     }
@@ -52,16 +52,16 @@ class BoundingBoxRenderer {
                 transition: all ${this.animationDuration}ms ease-out;
                 transform-origin: center;
             }
-            
+
             .detection-box.new {
                 animation: bbox-appear ${this.animationDuration}ms ease-out;
             }
-            
+
             .detection-box.removing {
                 opacity: 0;
                 transform: scale(0.9);
             }
-            
+
             .detection-label {
                 position: absolute;
                 top: -25px;
@@ -76,7 +76,7 @@ class BoundingBoxRenderer {
                 backdrop-filter: blur(5px);
                 background-color: rgba(0, 0, 0, 0.7);
             }
-            
+
             .detection-confidence {
                 position: absolute;
                 top: 3px;
@@ -88,7 +88,7 @@ class BoundingBoxRenderer {
                 border-radius: 3px;
                 backdrop-filter: blur(5px);
             }
-            
+
             .detection-3d-indicator {
                 position: absolute;
                 top: 3px;
@@ -101,7 +101,7 @@ class BoundingBoxRenderer {
                 box-shadow: 0 0 4px rgba(0, 255, 0, 0.5);
                 animation: pulse 2s infinite;
             }
-            
+
             @keyframes bbox-appear {
                 from {
                     opacity: 0;
@@ -112,7 +112,7 @@ class BoundingBoxRenderer {
                     transform: scale(1);
                 }
             }
-            
+
             @keyframes pulse {
                 0% { transform: scale(1); opacity: 1; }
                 50% { transform: scale(1.2); opacity: 0.8; }
@@ -153,7 +153,7 @@ class BoundingBoxRenderer {
                 box = this.getBoxFromPool();
                 this.activeBoxes.set(id, box);
                 this.container.appendChild(box);
-                
+
                 // Add appear animation
                 requestAnimationFrame(() => {
                     box.classList.add('new');
@@ -182,7 +182,7 @@ class BoundingBoxRenderer {
      */
     updateBox(box, detection, containerWidth, containerHeight, options) {
         const [x1, y1, x2, y2] = detection.bbox;
-        
+
         // Calculate percentage positions
         const left = (x1 / containerWidth) * 100;
         const top = (y1 / containerHeight) * 100;
@@ -229,17 +229,17 @@ class BoundingBoxRenderer {
         }
 
         // Update 3D indicator
-        if (options.show3DIndicator && detection.position_3d && 
-            Array.isArray(detection.position_3d) && 
+        if (options.show3DIndicator && detection.position_3d &&
+            Array.isArray(detection.position_3d) &&
             !detection.position_3d.every(v => v === 0)) {
-            
+
             let indicator = box.querySelector('.detection-3d-indicator');
             if (!indicator) {
                 indicator = document.createElement('div');
                 indicator.className = 'detection-3d-indicator';
                 box.appendChild(indicator);
             }
-            
+
             const [x, y, z] = detection.position_3d;
             indicator.title = `3D: X=${x.toFixed(1)}, Y=${y.toFixed(1)}, Z=${z.toFixed(1)}m`;
         } else {
@@ -275,18 +275,18 @@ class BoundingBoxRenderer {
     removeBox(id, box) {
         // Add removal animation
         box.classList.add('removing');
-        
+
         setTimeout(() => {
             if (box.parentNode) {
                 box.parentNode.removeChild(box);
             }
-            
+
             // Clean up and return to pool
             box.className = 'detection-box';
             box.innerHTML = '';
             box.style = '';
             this.boxPool.push(box);
-            
+
             this.activeBoxes.delete(id);
         }, this.animationDuration);
     }
@@ -305,9 +305,9 @@ class BoundingBoxRenderer {
         }
 
         // Use default color or generate one
-        const color = this.defaultColors[className.toLowerCase()] || 
+        const color = this.defaultColors[className.toLowerCase()] ||
                      this.generateColorForClass(className);
-        
+
         this.colorMap.set(className, color);
         return color;
     }
@@ -321,7 +321,7 @@ class BoundingBoxRenderer {
         for (let i = 0; i < className.length; i++) {
             hash = className.charCodeAt(i) + ((hash << 5) - hash);
         }
-        
+
         const hue = Math.abs(hash) % 360;
         return `hsl(${hue}, 70%, 50%)`;
     }
@@ -350,7 +350,7 @@ class BoundingBoxRenderer {
             box.style = '';
             this.boxPool.push(box);
         }
-        
+
         this.activeBoxes.clear();
     }
 
@@ -362,7 +362,7 @@ class BoundingBoxRenderer {
         if (options.animationDuration !== undefined) {
             this.animationDuration = options.animationDuration;
         }
-        
+
         if (options.colors) {
             Object.assign(this.defaultColors, options.colors);
             // Clear color cache to apply new colors

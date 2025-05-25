@@ -1,5 +1,3 @@
-from functools import lru_cache
-
 import cv2
 import numpy as np
 import torch

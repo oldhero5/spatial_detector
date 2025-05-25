@@ -2,7 +2,7 @@
 Spatial mapping module for tracking and visualizing objects in 3D space.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import cv2
 import numpy as np
@@ -53,7 +53,7 @@ class SpatialMap:
                 continue
 
             # Extract position (x, y, z)
-            x, y, z = position
+            x, _, z = position
 
             # Store position (relative to camera)
             current_positions[object_id] = {
@@ -150,7 +150,7 @@ class SpatialMap:
             label = data["label"]
 
             # Extract position (x is left/right, z is depth)
-            obj_x, obj_y, obj_z = position
+            obj_x, _, obj_z = position
 
             # Convert to pixel coordinates (origin at bottom center)
             # X axis: left/right from camera (negative is left)
@@ -185,8 +185,8 @@ class SpatialMap:
                 ):
                     history = self.object_history[obj_id]
                     for i in range(1, len(history)):
-                        prev_x, prev_y, prev_z = history[i - 1]
-                        curr_x, curr_y, curr_z = history[i]
+                        prev_x, _, prev_z = history[i - 1]
+                        curr_x, _, curr_z = history[i]
 
                         prev_px = int(camera_x + prev_x * scale_x)
                         prev_py = int(camera_y - prev_z * scale_z)
@@ -209,7 +209,6 @@ class SpatialMap:
                             )
 
                 # Draw label
-                text_color = (255, 255, 255)
                 cv2.putText(
                     map_image,
                     label,
@@ -246,7 +245,6 @@ class SpatialMap:
     def _draw_legend(self, image: np.ndarray):
         """Draw legend showing distance scale"""
         h, w = image.shape[:2]
-        legend_h = 30
         legend_w = 100
         legend_x = 10
         legend_y = h - 40
@@ -272,7 +270,7 @@ class SpatialMap:
         )
         cv2.putText(
             image,
-            f"{self.room_width*(legend_w/w):.1f}m",
+            f"{self.room_width * (legend_w / w):.1f}m",
             (legend_x + legend_w - 25, legend_y + 20),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.4,

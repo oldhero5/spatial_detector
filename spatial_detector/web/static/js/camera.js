@@ -8,15 +8,15 @@ class CameraManager {
         this.cameraToggleButton = document.getElementById('camera-toggle');
         this.cameraSelect = document.getElementById('camera-select');
         this.streamConnectButton = document.getElementById('stream-connect');
-        
+
         this.stream = null;
         this.availableCameras = [];
         this.frameCapturingInterval = null;
-        
+
         this.initEventListeners();
         this.enumerateDevices();
     }
-    
+
     /**
      * Initialize event listeners
      */
@@ -28,21 +28,21 @@ class CameraManager {
                 this.startCamera();
             }
         });
-        
+
         this.cameraSelect.addEventListener('change', () => {
             if (this.stream) {
                 this.stopCamera();
                 this.startCamera();
             }
         });
-        
+
         this.streamConnectButton.addEventListener('click', () => {
             // This would typically show a dialog with connection options
             // For now, just generate a QR code
             generateConnectionQR();
         });
     }
-    
+
     /**
      * Enumerate available camera devices
      */
@@ -60,9 +60,9 @@ class CameraManager {
 
             const devices = await navigator.mediaDevices.enumerateDevices();
             const videoDevices = devices.filter(device => device.kind === 'videoinput');
-            
+
             this.availableCameras = videoDevices;
-            
+
             // Clear and populate camera select
             this.cameraSelect.innerHTML = '';
             videoDevices.forEach((device, index) => {
@@ -71,7 +71,7 @@ class CameraManager {
                 option.text = device.label || `Camera ${index + 1}`;
                 this.cameraSelect.appendChild(option);
             });
-            
+
             // Enable controls if cameras are available
             if (videoDevices.length > 0) {
                 this.cameraSelect.disabled = false;
@@ -82,7 +82,7 @@ class CameraManager {
             this.showMediaError();
         }
     }
-    
+
     /**
      * Start selected camera
      */
@@ -109,7 +109,7 @@ class CameraManager {
                     height: { ideal: 720 }
                 }
             };
-            
+
             try {
                 this.stream = await navigator.mediaDevices.getUserMedia(constraints);
             } catch (err) {
@@ -132,10 +132,10 @@ class CameraManager {
             this.videoElement.srcObject = this.stream;
             // Remove any inline styles that might have been set
             this.videoElement.style.display = '';
-            
+
             // Update UI
             this.cameraToggleButton.textContent = 'Stop Camera';
-            
+
             // Clear any previous detections/state before starting
             if (window.clearDetections) {
                 window.clearDetections();
@@ -143,7 +143,7 @@ class CameraManager {
             if (window.mapView && window.mapView.clearAllObjects) {
                 window.mapView.clearAllObjects();
             }
-            
+
             // Wait a moment for video dimensions to be available
             setTimeout(() => {
                 // Register stream with server
@@ -154,11 +154,11 @@ class CameraManager {
                         height: this.videoElement.videoHeight || 480
                     });
                 }
-                
+
                 // Start sending frames to server after registration
                 this.startFrameCapture();
             }, 100);
-            
+
             return true;
         } catch (error) {
             console.error('Error starting camera:', error);
@@ -166,7 +166,7 @@ class CameraManager {
             return false;
         }
     }
-    
+
     /**
      * Stop camera stream
      */
@@ -174,43 +174,43 @@ class CameraManager {
         if (this.stream) {
             // Stop all tracks
             this.stream.getTracks().forEach(track => track.stop());
-            
+
             // Clear video element - set to null but keep visible to maintain layout
             this.videoElement.srcObject = null;
             // Don't hide the video element, just let it show black
-            
+
             // Clear the stream
             this.stream = null;
-            
+
             // Update UI
             this.cameraToggleButton.textContent = 'Start Camera';
-            
+
             // Stop frame capturing
             this.stopFrameCapture();
-            
+
             // Notify server that camera has stopped
             if (socket && socket.connected) {
                 socket.emit('stop_camera');
             }
-            
+
             // Clear any existing detections from the UI
             if (window.clearDetections) {
                 window.clearDetections();
             }
-            
+
             // Clear the 3D map
             if (window.mapView && window.mapView.clearAllObjects) {
                 window.mapView.clearAllObjects();
             }
-            
+
             // The video container already has a black background
             // so when video srcObject is null, it will show black
-            
+
             return true;
         }
         return false;
     }
-    
+
     /**
      * Start capturing frames from the video and sending to server
      */
@@ -218,32 +218,32 @@ class CameraManager {
         if (this.frameCapturingInterval) {
             clearInterval(this.frameCapturingInterval);
         }
-        
+
         const captureFrame = () => {
             if (!this.stream || !socket || !socket.connected) return;
-            
+
             // Create a canvas to get frame data
             const canvas = document.createElement('canvas');
             const context = canvas.getContext('2d');
-            
+
             // Set canvas size to match video
             canvas.width = this.videoElement.videoWidth;
             canvas.height = this.videoElement.videoHeight;
-            
+
             // Draw video frame to canvas
             context.drawImage(this.videoElement, 0, 0, canvas.width, canvas.height);
-            
+
             // Get base64 encoded image
             const imageData = canvas.toDataURL('image/jpeg', 0.7);
-            
+
             // Send to server
             socket.emit('frame', { image: imageData });
         };
-        
+
         // Capture frames at regular intervals
         this.frameCapturingInterval = setInterval(captureFrame, 50); // 20 FPS
     }
-    
+
     /**
      * Stop capturing frames
      */
@@ -253,21 +253,21 @@ class CameraManager {
             this.frameCapturingInterval = null;
         }
     }
-    
+
     /**
      * Take a snapshot from the current video stream
      */
     takeSnapshot() {
         if (!this.stream) return null;
-        
+
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
-        
+
         canvas.width = this.videoElement.videoWidth;
         canvas.height = this.videoElement.videoHeight;
-        
+
         context.drawImage(this.videoElement, 0, 0, canvas.width, canvas.height);
-        
+
         return canvas.toDataURL('image/png');
     }
 
@@ -290,7 +290,7 @@ class CameraManager {
             `;
             statusArea.appendChild(errorMsg);
         }
-        
+
         // Disable camera controls
         if (this.cameraToggleButton) this.cameraToggleButton.disabled = true;
         if (this.cameraSelect) this.cameraSelect.disabled = true;

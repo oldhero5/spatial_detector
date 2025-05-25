@@ -314,16 +314,16 @@ while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
         break
-    
+
     # Detect objects
     detections = detector.detect(frame)
-    
+
     # Estimate depth
     depth_map, depth_norm = depth_estimator.estimate_depth(frame)
-    
+
     # Convert to metric depth
     metric_depth_map = depth_calibrator.depth_to_meters(depth_norm)
-    
+
     # Project to 3D space
     positions_3d = []
     for detection in detections:
@@ -335,18 +335,18 @@ while cap.isOpened():
             positions_3d.append(position_3d)
         else:
             positions_3d.append((0, 0, 0))
-    
+
     # Update spatial map
     spatial_map.update(detections, positions_3d)
-    
+
     # Visualize results
     annotated_frame = visualizer.draw_detections(frame, detections, positions_3d)
     map_viz = spatial_map.get_topdown_view(width=400, height=400)
-    
+
     # Display
     cv2.imshow('Detection', annotated_frame)
     cv2.imshow('Map', map_viz)
-    
+
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
@@ -761,7 +761,7 @@ For detailed release management instructions, see [RELEASE_GUIDE.md](RELEASE_GUI
   - Low-end: yolov8n.pt
   - Mid-range: yolov8s.pt
   - High-end: yolov8m.pt or yolov8l.pt
-  
+
 - **Reduce processing resolution**: Lower the camera resolution for faster processing: `--width 640 --height 480`
 
 - **WebSocket optimization**: The latest version includes optimized WebSocket communication to reduce latency and improve real-time performance.

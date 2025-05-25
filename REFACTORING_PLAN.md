@@ -39,7 +39,7 @@ class ConnectionManager extends EventTarget {
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
     }
-    
+
     connect() { /* Establish connection with retry logic */ }
     disconnect() { /* Clean disconnect */ }
     emit(event, data) { /* Send with error handling */ }
@@ -55,7 +55,7 @@ class DetectionProcessor {
         this.minConfidence = options.minConfidence || 0.5;
         this.validationRules = options.validationRules || {};
     }
-    
+
     validateDetection(detection) { /* Validate detection data */ }
     processResults(results) { /* Process and filter results */ }
     calculateMetrics(detections) { /* Calculate performance metrics */ }
@@ -71,7 +71,7 @@ class UIManager {
         this.updateQueue = [];
         this.rafId = null;
     }
-    
+
     registerElement(id, element) { /* Cache DOM elements */ }
     queueUpdate(updateFn) { /* Batch DOM updates */ }
     showStatus(type, message) { /* Unified status messages */ }
@@ -102,7 +102,7 @@ class VideoEncoder {
         this.encoder = null;
         this.useWebCodecs = 'VideoEncoder' in window;
     }
-    
+
     async encodeFrame(videoElement) {
         if (this.useWebCodecs) {
             // Use native encoding
@@ -124,7 +124,7 @@ class BoundingBoxRenderer {
         this.boxPool = [];
         this.activeBoxes = new Map();
     }
-    
+
     render(detections) {
         // Reuse existing DOM elements
         // Only update changed properties
@@ -149,7 +149,7 @@ class AppState extends EventTarget {
             calibration: { active: false, data: null }
         };
     }
-    
+
     update(path, value) { /* Immutable state updates */ }
     subscribe(path, callback) { /* Reactive subscriptions */ }
 }
@@ -167,7 +167,7 @@ class ErrorHandler {
         this.logLevel = options.logLevel || 'error';
         this.handlers = new Map();
     }
-    
+
     register(errorType, handler) { /* Register error handlers */ }
     handle(error, context) { /* Process errors with context */ }
     report(error) { /* Send error reports */ }

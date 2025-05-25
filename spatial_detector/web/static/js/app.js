@@ -1,6 +1,6 @@
 /**
  * Spatial Detector Application - Main Entry Point
- * 
+ *
  * This is the refactored main application that uses modular components
  * for better performance and maintainability.
  */
@@ -21,7 +21,7 @@ class SpatialDetectorApp {
         });
         this.ui = new UIManager();
         this.bboxRenderer = null; // Initialized after DOM ready
-        
+
         // App state
         this.state = {
             camera: {
@@ -42,14 +42,14 @@ class SpatialDetectorApp {
                 distance: 1.0
             }
         };
-        
+
         // Performance tracking
         this.performance = {
             frameCount: 0,
             lastFpsUpdate: Date.now(),
             fps: 0
         };
-        
+
         // Server info
         this.serverInfo = {
             isMac: false,
@@ -63,36 +63,36 @@ class SpatialDetectorApp {
      */
     async init() {
         console.log('Initializing Spatial Detector...');
-        
+
         // Setup UI event listeners
         this.setupUIListeners();
-        
+
         // Initialize bounding box renderer
         const videoContainer = document.getElementById('video-container');
         if (videoContainer) {
             this.bboxRenderer = new BoundingBoxRenderer(videoContainer);
         }
-        
+
         // Connect to server
         await this.connectToServer();
-        
+
         // Fetch initial server status
         await this.fetchServerStatus();
-        
+
         // Setup connection event handlers
         this.setupConnectionHandlers();
-        
+
         // Load saved preferences
         this.loadPreferences();
-        
+
         // Start FPS counter
         this.startFPSCounter();
-        
+
         // Check for first-time setup
         if (!localStorage.getItem('spatial-detector-setup-completed')) {
             this.showSetupWizard();
         }
-        
+
         console.log('Initialization complete');
     }
 
@@ -119,26 +119,26 @@ class SpatialDetectorApp {
         this.connection.addEventListener('connected', () => {
             this.ui.updateConnectionStatus(true, 'Connected');
         });
-        
+
         this.connection.addEventListener('disconnected', () => {
             this.ui.updateConnectionStatus(false, 'Disconnected');
         });
-        
+
         this.connection.addEventListener('error', (event) => {
             console.error('Connection error:', event.detail);
             this.ui.showStatus('error', `Connection error: ${event.detail.message}`);
         });
-        
+
         // Detection results
         this.connection.addEventListener('detection_results', (event) => {
             this.handleDetectionResults(event.detail);
         });
-        
+
         // Initialization status
         this.connection.addEventListener('initialization_status', (event) => {
             this.handleInitializationStatus(event.detail);
         });
-        
+
         // Processing errors
         this.connection.addEventListener('processing_error', (event) => {
             console.error('Processing error:', event.detail);
@@ -152,10 +152,10 @@ class SpatialDetectorApp {
     handleDetectionResults(data) {
         // Update FPS
         this.updateFPS();
-        
+
         // Process detections
         const processed = this.detectionProcessor.processResults(data.detections || []);
-        
+
         // Update stream view if present
         if (data.image) {
             const streamView = document.getElementById('stream-view');
@@ -164,7 +164,7 @@ class SpatialDetectorApp {
                 streamView.style.display = 'block';
             }
         }
-        
+
         // Render bounding boxes
         if (this.bboxRenderer && this.state.detection.enabled) {
             this.bboxRenderer.render(processed.detections, {
@@ -173,18 +173,18 @@ class SpatialDetectorApp {
                 show3DIndicator: true
             });
         }
-        
+
         // Update detection info
         this.ui.updateDetectionInfo(
-            processed.detections, 
+            processed.detections,
             this.state.detection.showLabels
         );
-        
+
         // Update 3D map if visible
         if (window.mapView && this.state.map.visible) {
             window.mapView.updateObjects(processed.detections);
         }
-        
+
         // Log metrics periodically
         if (this.performance.frameCount % 100 === 0) {
             console.log('Detection metrics:', processed.metrics);
@@ -223,23 +223,23 @@ class SpatialDetectorApp {
         try {
             const response = await fetch('/api/status');
             const data = await response.json();
-            
+
             this.serverInfo = {
                 isMac: data.is_mac || false,
                 detectorReady: data.detector_ready || false,
                 depthReady: data.depth_ready || false
             };
-            
+
             // Update UI based on capabilities
             const generateQrButton = document.getElementById('generate-qr');
             if (generateQrButton) {
                 generateQrButton.disabled = !this.serverInfo.isMac;
             }
-            
+
             if (this.serverInfo.detectorReady) {
                 this.ui.showStatus('success', 'Object detector loaded');
             }
-            
+
             if (this.serverInfo.depthReady) {
                 this.ui.showStatus('success', 'Depth estimator loaded');
             }
@@ -260,7 +260,7 @@ class SpatialDetectorApp {
                 this.savePreferences();
             });
         }
-        
+
         const toggleDepth = document.getElementById('toggle-depth');
         if (toggleDepth) {
             toggleDepth.addEventListener('change', (e) => {
@@ -269,7 +269,7 @@ class SpatialDetectorApp {
                 this.savePreferences();
             });
         }
-        
+
         const toggleGrid = document.getElementById('toggle-grid');
         if (toggleGrid) {
             toggleGrid.addEventListener('change', (e) => {
@@ -280,7 +280,7 @@ class SpatialDetectorApp {
                 this.savePreferences();
             });
         }
-        
+
         // Map toggle
         const toggleMap = document.getElementById('toggle-map');
         if (toggleMap) {
@@ -288,7 +288,7 @@ class SpatialDetectorApp {
                 this.toggleMap();
             });
         }
-        
+
         // Calibration
         const startCalibration = document.getElementById('start-calibration');
         if (startCalibration) {
@@ -296,7 +296,7 @@ class SpatialDetectorApp {
                 this.startCalibration();
             });
         }
-        
+
         // QR Code generation
         const generateQr = document.getElementById('generate-qr');
         if (generateQr) {
@@ -304,7 +304,7 @@ class SpatialDetectorApp {
                 this.generateQRCode();
             });
         }
-        
+
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             this.handleKeyPress(e);
@@ -318,11 +318,11 @@ class SpatialDetectorApp {
         this.state.map.visible = !this.state.map.visible;
         const mapContainer = document.getElementById('map-container');
         const toggleButton = document.getElementById('toggle-map');
-        
+
         if (this.state.map.visible) {
             mapContainer.style.display = 'block';
             toggleButton.textContent = 'Hide Map';
-            
+
             if (!window.mapView) {
                 // Lazy load map view
                 import('./map-view.js').then(module => {
@@ -334,7 +334,7 @@ class SpatialDetectorApp {
             mapContainer.style.display = 'none';
             toggleButton.textContent = 'Show Map';
         }
-        
+
         this.savePreferences();
     }
 
@@ -346,7 +346,7 @@ class SpatialDetectorApp {
         if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
             return;
         }
-        
+
         switch (event.key) {
             case 'c':
                 // Toggle calibration
@@ -402,11 +402,11 @@ class SpatialDetectorApp {
             this.ui.showStatus('warning', 'QR code generation is only available on macOS');
             return;
         }
-        
+
         try {
             const response = await fetch('/api/qrcode');
             const data = await response.json();
-            
+
             if (data.qr_code) {
                 const qrContainer = document.getElementById('qr-code');
                 if (qrContainer) {
@@ -425,7 +425,7 @@ class SpatialDetectorApp {
      */
     updateServerConfig() {
         if (!this.connection.isConnected()) return;
-        
+
         this.connection.emit('update_config', {
             show_depth: this.state.detection.showDepth,
             min_confidence: this.detectionProcessor.minConfidence
@@ -439,11 +439,11 @@ class SpatialDetectorApp {
         this.performance.frameCount++;
         const now = Date.now();
         const elapsed = now - this.performance.lastFpsUpdate;
-        
+
         if (elapsed >= 1000) {
             this.performance.fps = Math.round((this.performance.frameCount / elapsed) * 1000);
             this.ui.updateFPS(this.performance.fps);
-            
+
             this.performance.frameCount = 0;
             this.performance.lastFpsUpdate = now;
         }
@@ -491,7 +491,7 @@ class SpatialDetectorApp {
                 const prefs = JSON.parse(saved);
                 Object.assign(this.state.detection, prefs.detection || {});
                 Object.assign(this.state.map, prefs.map || {});
-                
+
                 // Apply loaded preferences to UI
                 this.applyPreferences();
             } catch (error) {
@@ -508,12 +508,12 @@ class SpatialDetectorApp {
         if (toggleLabels) {
             toggleLabels.checked = this.state.detection.showLabels;
         }
-        
+
         const toggleDepth = document.getElementById('toggle-depth');
         if (toggleDepth) {
             toggleDepth.checked = this.state.detection.showDepth;
         }
-        
+
         const toggleGrid = document.getElementById('toggle-grid');
         if (toggleGrid) {
             toggleGrid.checked = this.state.map.showGrid;

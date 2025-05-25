@@ -4,7 +4,7 @@ Depth calibration module for converting normalized depth to metric distances.
 
 import json
 import os
-from typing import Any, Dict, Optional, Tuple
+from typing import Optional
 
 import cv2
 import numpy as np
@@ -86,7 +86,7 @@ class DepthCalibrator:
             file_path: Path to the calibration file
         """
         try:
-            with open(file_path, "r") as f:
+            with open(file_path) as f:
                 calibration_data = json.load(f)
 
             self.depth_scale = calibration_data.get("depth_scale", 1.0)

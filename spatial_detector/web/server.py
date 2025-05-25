@@ -4,16 +4,13 @@ Provides a web interface for using the detector with iPhone camera input.
 """
 
 import base64
-import json
 import logging
 import os
 import platform
 import socket
-import sys
 import threading
 import time
 from io import BytesIO
-from typing import Any, Dict, List, Optional
 
 import cv2
 import numpy as np
@@ -308,27 +305,29 @@ class WebServer:
             """Handle camera stop event from client"""
             client_id = request.sid
             self.logger.info(f"Camera stopped for client: {client_id}")
-            
+
             # Clear the frame buffer to stop processing
             self.frame_buffer = None
-            
+
             # If this was the active stream, clear it
             if client_id == self.active_stream_id:
                 self.active_stream_id = None
-                
+
                 # Stop processing if no other streams are active
                 if not any(sid != client_id for sid in self.client_streams):
                     try:
                         self.safe_stop_processing()
-                        self.logger.info("Stopped processing as no active streams remain")
+                        self.logger.info(
+                            "Stopped processing as no active streams remain"
+                        )
                     except Exception as e:
                         self.logger.error(f"Error stopping processing: {e}")
-            
+
             # Remove the stream registration
             if client_id in self.client_streams:
                 del self.client_streams[client_id]
                 self.logger.info(f"Removed stream registration for: {client_id}")
-            
+
             return {"status": "stopped"}
 
     def initialize_detector(self, width: int, height: int):
@@ -431,7 +430,9 @@ class WebServer:
                     try:
                         # Get dimensions from the current frame
                         height, width = self.frame_buffer.shape[:2]
-                        self.camera = camera_model.PinholeCamera(image_size=(width, height))
+                        self.camera = camera_model.PinholeCamera(
+                            image_size=(width, height)
+                        )
                         self.logger.info(
                             f"Camera model initialized with dimensions {width}x{height}"
                         )
@@ -472,7 +473,7 @@ class WebServer:
                                     continue
 
                                 # Calculate center point
-                                x1, y1, x2, y2 = [float(v) for v in bbox]
+                                x1, y1, x2, y2 = (float(v) for v in bbox)
                                 center_x = int((x1 + x2) / 2)
                                 center_y = int((y1 + y2) / 2)
 
@@ -496,10 +497,12 @@ class WebServer:
                                 self.logger.info(
                                     f"Depth at ({center_x}, {center_y}) for {detection.get('class_name')}: {depth}"
                                 )
-                                
+
                                 # Log depth map stats for debugging
                                 if depth_norm is not None:
-                                    self.logger.info(f"Depth map stats - min: {np.min(depth_norm)}, max: {np.max(depth_norm)}, mean: {np.mean(depth_norm)}")
+                                    self.logger.info(
+                                        f"Depth map stats - min: {np.min(depth_norm)}, max: {np.max(depth_norm)}, mean: {np.mean(depth_norm)}"
+                                    )
 
                                 # Convert to 3D coordinates
                                 if depth is not None and not np.isnan(depth):
@@ -544,7 +547,9 @@ class WebServer:
                                                 normalized_depth=True,
                                                 depth_scale=5.0,  # Use more realistic scale for better real-world positioning
                                             )
-                                            self.logger.info(f"Calculated 3D position: {world_coords}")
+                                            self.logger.info(
+                                                f"Calculated 3D position: {world_coords}"
+                                            )
                                         except AttributeError as attr_err:
                                             # This can happen if camera becomes None between the check and the call (race condition)
                                             self.logger.error(

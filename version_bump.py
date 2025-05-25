@@ -87,7 +87,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     else:
         changelog_content = changelog_path.read_text()
 
-    today = datetime.date.today().isoformat()
+    from datetime import timezone
+
+    today = datetime.datetime.now(timezone.utc).date().isoformat()
     new_version_header = f"\n## [{new_version}] - {today}\n\n### Added\n- \n\n### Changed\n- \n\n### Fixed\n- \n"
 
     # Insert after the header
@@ -113,19 +115,19 @@ def create_release_notes(new_version):
 
 ## 🌟 Highlights
 
-- 
+-
 
 ## 🛠️ Features
 
-- 
+-
 
 ## 🔍 Improvements
 
-- 
+-
 
 ## 🐛 Bug Fixes
 
-- 
+-
 
 ## 📋 Installation & Usage
 
@@ -135,7 +137,7 @@ uv pip install spatial-detector=={new_version}
 
 ## 🔮 What's Next
 
-- 
+-
 """
 
     release_path.write_text(release_content)
@@ -198,13 +200,13 @@ def main():
     # Update changelog
     changelog_path = update_changelog(new_version)
     if edit_notes:
-        print(f"Opening CHANGELOG.md for editing...")
+        print("Opening CHANGELOG.md for editing...")
         open_editor(changelog_path)
 
     # Create release notes
     release_notes_path = create_release_notes(new_version)
     if edit_notes:
-        print(f"Opening RELEASE_NOTES.md for editing...")
+        print("Opening RELEASE_NOTES.md for editing...")
         open_editor(release_notes_path)
 
     create_git_tag(new_version)

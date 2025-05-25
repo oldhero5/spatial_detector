@@ -1,6 +1,6 @@
 /**
  * DetectionProcessor - Handles validation and processing of detection results
- * 
+ *
  * Features:
  * - Detection validation and filtering
  * - Performance metrics calculation
@@ -13,11 +13,11 @@ class DetectionProcessor {
         this.maxAge = options.maxAge || 500; // Max age for tracking (ms)
         this.mergeThreshold = options.mergeThreshold || 50; // Pixel distance for merging
         this.validClasses = options.validClasses || null; // null = all classes valid
-        
+
         // Tracking state
         this.trackedDetections = new Map();
         this.detectionId = 0;
-        
+
         // Performance metrics
         this.metrics = {
             totalProcessed: 0,
@@ -35,7 +35,7 @@ class DetectionProcessor {
      */
     processResults(detections) {
         const startTime = performance.now();
-        
+
         if (!Array.isArray(detections)) {
             console.warn('Invalid detections format: expected array');
             return { detections: [], metrics: this.metrics };
@@ -150,7 +150,7 @@ class DetectionProcessor {
         // Match current detections to tracked ones
         for (const detection of detections) {
             const match = this.findMatchingDetection(detection);
-            
+
             if (match) {
                 // Update existing tracked detection
                 match.bbox = detection.bbox;
@@ -197,9 +197,9 @@ class DetectionProcessor {
             const [tx1, ty1, tx2, ty2] = tracked.bbox;
             const tcenterX = (tx1 + tx2) / 2;
             const tcenterY = (ty1 + ty2) / 2;
-            
+
             const distance = Math.sqrt(
-                Math.pow(centerX - tcenterX, 2) + 
+                Math.pow(centerX - tcenterX, 2) +
                 Math.pow(centerY - tcenterY, 2)
             );
 
@@ -234,10 +234,10 @@ class DetectionProcessor {
         for (const detection of detections) {
             // Count by class
             classCounts[detection.class_name] = (classCounts[detection.class_name] || 0) + 1;
-            
+
             // Sum confidence
             totalConfidence += detection.confidence;
-            
+
             // Calculate bbox area
             const [x1, y1, x2, y2] = detection.bbox;
             totalArea += (x2 - x1) * (y2 - y1);
@@ -262,10 +262,10 @@ class DetectionProcessor {
         this.metrics.validDetections += validCount;
         this.metrics.invalidDetections += (totalCount - validCount);
         this.metrics.processingTime = performance.now() - startTime;
-        
+
         if (this.metrics.validDetections > 0) {
-            this.metrics.averageConfidence = 
-                (this.metrics.averageConfidence * (this.metrics.validDetections - validCount) + 
+            this.metrics.averageConfidence =
+                (this.metrics.averageConfidence * (this.metrics.validDetections - validCount) +
                  validCount * this.minConfidence) / this.metrics.validDetections;
         }
     }

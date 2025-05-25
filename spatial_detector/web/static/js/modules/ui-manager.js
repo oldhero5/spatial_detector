@@ -1,6 +1,6 @@
 /**
  * UIManager - Centralized UI update management with performance optimization
- * 
+ *
  * Features:
  * - Batched DOM updates using requestAnimationFrame
  * - Element caching to reduce DOM queries
@@ -11,20 +11,20 @@ class UIManager {
     constructor() {
         // Element cache
         this.elements = new Map();
-        
+
         // Update queues
         this.updateQueue = [];
         this.immediateQueue = [];
         this.rafId = null;
-        
+
         // Status message management
         this.statusQueue = [];
         this.statusTimeout = null;
         this.statusDuration = 3000;
-        
+
         // Debounce timers
         this.debounceTimers = new Map();
-        
+
         // Initialize
         this.cacheElements();
         this.startUpdateLoop();
@@ -123,10 +123,10 @@ class UIManager {
                     }
                 });
             }
-            
+
             this.rafId = requestAnimationFrame(processUpdates);
         };
-        
+
         this.rafId = requestAnimationFrame(processUpdates);
     }
 
@@ -135,7 +135,7 @@ class UIManager {
      */
     processImmediateQueue() {
         if (this.immediateQueue.length === 0) return;
-        
+
         const updates = this.immediateQueue.splice(0);
         updates.forEach(update => {
             try {
@@ -155,7 +155,7 @@ class UIManager {
         this.queueUpdate(() => {
             const indicator = this.getElement('status-indicator');
             const statusText = this.getElement('status-text');
-            
+
             if (indicator) {
                 if (connected) {
                     indicator.classList.add('connected');
@@ -163,7 +163,7 @@ class UIManager {
                     indicator.classList.remove('connected');
                 }
             }
-            
+
             if (statusText && text !== null) {
                 statusText.textContent = text;
             }
@@ -305,10 +305,10 @@ class UIManager {
             // Build HTML efficiently
             const html = detections.map(detection => {
                 const confidence = Math.round(detection.confidence * 100);
-                const distance = detection.position_3d 
+                const distance = detection.position_3d
                     ? `${detection.position_3d[2].toFixed(1)}m`
                     : 'N/A';
-                
+
                 return `<div class="detection-item">
                     <span class="detection-label">${detection.label}</span>
                     <span class="detection-confidence">${confidence}%</span>
@@ -328,14 +328,14 @@ class UIManager {
         if (this.rafId) {
             cancelAnimationFrame(this.rafId);
         }
-        
+
         this.debounceTimers.forEach(timer => clearTimeout(timer));
         this.debounceTimers.clear();
-        
+
         if (this.statusTimeout) {
             clearTimeout(this.statusTimeout);
         }
-        
+
         this.elements.clear();
         this.updateQueue = [];
         this.immediateQueue = [];
@@ -352,39 +352,39 @@ class UIManager {
                 opacity: 0;
                 transform: translateX(100%);
             }
-            
+
             .status-message.show {
                 opacity: 1;
                 transform: translateX(0);
             }
-            
+
             .status-success {
                 background-color: #4caf50;
                 color: white;
             }
-            
+
             .status-error {
                 background-color: #f44336;
                 color: white;
             }
-            
+
             .status-warning {
                 background-color: #ff9800;
                 color: white;
             }
-            
+
             .status-info {
                 background-color: #2196f3;
                 color: white;
             }
-            
+
             .detection-item {
                 display: flex;
                 justify-content: space-between;
                 padding: 4px 0;
                 border-bottom: 1px solid rgba(255,255,255,0.1);
             }
-            
+
             .detection-item:last-child {
                 border-bottom: none;
             }

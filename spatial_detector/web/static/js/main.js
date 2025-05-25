@@ -47,11 +47,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!localStorage.getItem('spatial-detector-setup-completed')) {
         showSetupWizard();
     }
-    
+
     initSocketConnection();
     initEventListeners();
     startFpsCounter();
-    
+
     // Get initial server status
     fetchServerStatus();
 });
@@ -65,11 +65,11 @@ function fetchServerStatus() {
         .then(data => {
             console.log('Server status:', data);
             isMac = data.is_mac;
-            
+
             // If on macOS, enable QR code generation
             if (isMac) {
                 generateQrButton.disabled = false;
-                
+
                 // If connection_info is already available, show QR code
                 if (data.connection_info && data.connection_info.qr_code) {
                     displayQRCode(data.connection_info);
@@ -78,12 +78,12 @@ function fetchServerStatus() {
                 generateQrButton.disabled = true;
                 qrInstructions.textContent = "QR code generation is only available on macOS";
             }
-            
+
             // Update detector status
             if (data.detector_ready) {
                 showStatusMessage('success', 'Object detector loaded successfully');
             }
-            
+
             if (data.depth_ready) {
                 showStatusMessage('success', 'Depth estimator loaded successfully');
             }
@@ -123,15 +123,15 @@ function initSocketConnection() {
         try {
             // Log first few detections for debugging (not all to avoid cluttering console)
             const numToLog = Math.min(3, data.detections?.length || 0);
-            console.log(`Received ${data.detections?.length || 0} detections. Sample:`, 
+            console.log(`Received ${data.detections?.length || 0} detections. Sample:`,
                 data.detections?.slice(0, numToLog));
-                
+
             // Validate detection data
             if (!data.detections || !Array.isArray(data.detections)) {
                 console.error("Invalid detection data:", data);
                 return;
             }
-            
+
             // Check for position_3d in detections and validate with more lenient criteria
             // Only filter out detections with null or invalid position_3d
             let validDetections = data.detections.filter(d => {
@@ -146,31 +146,31 @@ function initSocketConnection() {
                 // All values must be valid numbers (including 0)
                 return d.position_3d.every(v => typeof v === 'number' && !isNaN(v));
             });
-            
+
             if (data.detections.length > 0 && validDetections.length === 0) {
                 console.warn("All detections missing valid position_3d data");
             } else if (validDetections.length < data.detections.length) {
                 console.warn(`${data.detections.length - validDetections.length} detections have invalid position data`);
             }
-            
+
             // Store filtered detections for other components
             lastDetections = validDetections;
-            
+
             // Update UI with all detections (even those with invalid positions)
             updateDetectionInfo(data.detections);
-            
+
             // Update map if active - use only valid detections
             if (showMap && window.mapView) {
                 try {
                     // More detailed logging of detections being sent to map
                     console.log(`Attempting to update map with ${validDetections.length} valid detections`);
-                    
+
                     if (validDetections.length > 0) {
                         console.log("Valid detection details:");
                         validDetections.forEach((det, i) => {
                             console.log(`Detection ${i}: label=${det.label}, position_3d=${JSON.stringify(det.position_3d)}, bbox=${JSON.stringify(det.bbox)}`);
                         });
-                        
+
                         // Always update the map even if there are no valid detections
                         // This ensures proper map initialization and rendering
                         window.mapView.updateObjects(validDetections);
@@ -186,18 +186,18 @@ function initSocketConnection() {
             } else if (showMap) {
                 console.warn("Map view is not initialized but showMap is true");
             }
-            
+
             // Update FPS counter
             frameCount++;
         } catch (error) {
             console.error("Error handling detection results:", error);
         }
     });
-    
+
     // Model initialization status messages
     socket.on('initialization_status', (data) => {
         console.log('Initialization status:', data);
-        
+
         if (data.status === 'starting') {
             showStatusMessage('info', data.message);
         } else if (data.status === 'progress') {
@@ -216,7 +216,7 @@ function initSocketConnection() {
 function showStatusMessage(type, message) {
     const msgElement = document.createElement('div');
     msgElement.className = `status-message ${type}`;
-    
+
     // Add appropriate icon based on message type
     let icon = '';
     switch (type) {
@@ -233,12 +233,12 @@ function showStatusMessage(type, message) {
             icon = '<i class="fas fa-exclamation-triangle"></i>';
             break;
     }
-    
+
     msgElement.innerHTML = `${icon} ${message}`;
-    
+
     // Add to status area and remove after timeout
     connectionStatusArea.appendChild(msgElement);
-    
+
     // Auto-remove after 5 seconds for success messages
     if (type === 'success' || type === 'info') {
         setTimeout(() => {
@@ -272,23 +272,23 @@ function initEventListeners() {
     toggleMapButton.addEventListener('click', () => {
         showMap = !showMap;
         const mapContainer = document.querySelector('.map-view');
-        
+
         if (showMap) {
             toggleMapButton.textContent = 'Hide Map';
             mapContainer.style.display = 'flex';
-            
+
             // Initialize 3D map if not already done
             if (!window.mapView) {
                 try {
                     console.log("Initializing map view");
-                    
+
                     // Ensure THREE is defined
                     if (typeof THREE === 'undefined') {
                         console.error("THREE.js is not loaded!");
                         showStatusMessage('error', 'THREE.js library is not loaded. Map view cannot be initialized.');
                         return;
                     }
-                    
+
                     // Check that the map container exists
                     const mapContainerElem = document.getElementById('map-container');
                     if (!mapContainerElem) {
@@ -296,20 +296,20 @@ function initEventListeners() {
                         showStatusMessage('error', 'Map container element not found');
                         return;
                     }
-                    
+
                     // Ensure the container has dimensions
                     if (mapContainerElem.clientWidth === 0 || mapContainerElem.clientHeight === 0) {
                         console.error("Map container has zero dimensions!");
                         mapContainerElem.style.height = '300px'; // Set default height
                     }
-                    
+
                     // Initialize map view
                     window.mapView = new MapView('map-container');
                     showStatusMessage('success', 'Map view initialized');
-                    
+
                     // Don't add test objects for production - only real detections
                     // window.mapView.addTestObject();
-                    
+
                     // Log MapView initialization success
                     console.log("MapView initialized successfully");
                 } catch (error) {
@@ -317,19 +317,19 @@ function initEventListeners() {
                     showStatusMessage('error', 'Failed to initialize map view: ' + error.message);
                 }
             }
-            
+
             // Update with latest detections
             if (lastDetections && lastDetections.length > 0) {
                 try {
                     console.log("Updating map with detections:", lastDetections);
-                    
+
                     // Log the position_3d values explicitly
                     lastDetections.forEach((det, i) => {
-                        console.log(`Detection ${i} position_3d:`, det.position_3d, 
-                            `typeof:`, typeof det.position_3d, 
+                        console.log(`Detection ${i} position_3d:`, det.position_3d,
+                            `typeof:`, typeof det.position_3d,
                             `isArray:`, Array.isArray(det.position_3d));
                     });
-                    
+
                     window.mapView.updateObjects(lastDetections);
                 } catch (error) {
                     console.error("Error updating map with detections:", error);
@@ -337,12 +337,12 @@ function initEventListeners() {
             } else {
                 console.log("No valid detections available for map");
             }
-            
+
             // Force resize to ensure map renders correctly - use a longer delay
             setTimeout(() => {
                 window.dispatchEvent(new Event('resize'));
                 console.log("Forced resize event for map view");
-                
+
                 // Ensure Three.js renderer is properly initialized and re-rendered
                 if (window.mapView && window.mapView.renderer) {
                     try {
@@ -350,14 +350,14 @@ function initEventListeners() {
                         window.mapView.renderer.setSize(mapContainer.clientWidth, mapContainer.clientHeight);
                         window.mapView.camera.aspect = mapContainer.clientWidth / mapContainer.clientHeight;
                         window.mapView.camera.updateProjectionMatrix();
-                        
+
                         // Don't add test objects on initialization - only real detections
                         // Comment out for production use
                         // if (window.mapView.addTestObject) {
                         //     window.mapView.addTestObject();
                         //     console.log("Added test objects to scene for visibility reference");
                         // }
-                        
+
                         // Force render the scene
                         window.mapView.renderer.render(window.mapView.scene, window.mapView.camera);
                         console.log("Map view renderer updated successfully with test object");
@@ -384,7 +384,7 @@ function initEventListeners() {
     startCalibrationButton.addEventListener('click', () => {
         toggleCalibrationMode(true);
     });
-    
+
     saveCalibrationButton.addEventListener('click', () => {
         saveCalibration();
     });
@@ -396,13 +396,13 @@ function initEventListeners() {
 
     // QR Code generation
     generateQrButton.addEventListener('click', generateConnectionQR);
-    
+
     // Keyboard controls for calibration
     document.addEventListener('keydown', (e) => {
         if (calibrationUI.classList.contains('hidden')) return;
-        
+
         const currentDistance = parseFloat(calibDistanceElement.textContent);
-        
+
         switch (e.code) {
             case 'Space':
                 // Set calibration point
@@ -438,14 +438,14 @@ function saveCalibration() {
         showStatusMessage('error', 'Cannot save calibration: Server not connected');
         return;
     }
-    
+
     const calibrationDistance = parseFloat(calibDistanceElement.textContent);
-    
+
     // Send calibration data to server
     socket.emit('save_calibration', {
         distance: calibrationDistance
     });
-    
+
     showStatusMessage('success', `Calibration saved at ${calibrationDistance.toFixed(1)}m`);
     toggleCalibrationMode(false);
 }
@@ -466,10 +466,10 @@ function showCalibrationFeedback() {
     feedbackElement.style.transform = 'translate(-50%, -50%)';
     feedbackElement.style.boxShadow = '0 0 15px var(--status-success)';
     feedbackElement.className = 'pulse';
-    
+
     // Append to video overlay
     document.querySelector('.video-overlay').appendChild(feedbackElement);
-    
+
     // Remove after a few seconds
     setTimeout(() => {
         feedbackElement.remove();
@@ -494,12 +494,12 @@ function updateConnectionStatus(connected) {
  */
 function updateServerConfig() {
     if (!socketConnected) return;
-    
+
     socket.emit('config', {
         show_labels: showLabels,
         show_depth: showDepth
     });
-    
+
     // Also update UI accordingly
     if (showLabels) {
         detectionInfoElement.style.display = 'block';
@@ -518,31 +518,31 @@ function updateDetectionInfo(detections) {
         document.querySelectorAll('.detection-box').forEach(box => box.remove());
         return;
     }
-    
+
     let html = '';
-    
+
     // Get video container dimensions
     const videoContainer = document.getElementById('video-container');
     const containerWidth = videoContainer.clientWidth;
     const containerHeight = videoContainer.clientHeight;
-    
+
     // Clear any existing bounding boxes
     document.querySelectorAll('.detection-box').forEach(box => box.remove());
-    
+
     detections.forEach((detection, index) => {
         // Handle position text
         const pos = detection.position_3d;
         let posText = '';
-        
+
         if (pos && Array.isArray(pos) && pos.length >= 3) {
             // Focus on the depth (Z) value which is most useful
             posText = `${pos[2].toFixed(1)}m`;
         }
-        
+
         // Build CSS class for label based on object type
         let labelClass = 'detection-label';
         const label = detection.label || 'unknown';
-        
+
         // Only add the detection item if show labels is enabled
         if (showLabels) {
             html += `<div class="detection-item">
@@ -553,17 +553,17 @@ function updateDetectionInfo(detections) {
                 <span class="detection-position">${posText}</span>
             </div>`;
         }
-        
+
         // Draw bounding box if the detection has valid bbox
         if (detection.bbox && Array.isArray(detection.bbox) && detection.bbox.length === 4) {
             try {
                 // Parse bbox coordinates
                 const [x1, y1, x2, y2] = detection.bbox.map(Number);
-                
+
                 // Generate a hash color based on label
                 const labelHash = label.split('').reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 0xffffff, 0);
                 const color = `rgb(${(labelHash * 123) % 255}, ${(labelHash * 147) % 255}, ${(labelHash * 109) % 255})`;
-                
+
                 // Create and position a div for the bounding box
                 const boxDiv = document.createElement('div');
                 boxDiv.className = 'detection-box';
@@ -574,9 +574,9 @@ function updateDetectionInfo(detections) {
                 boxDiv.style.borderColor = color;
                 boxDiv.style.borderWidth = '3px'; // Thicker border for better visibility
                 boxDiv.dataset.label = label;
-                
+
                 // Add an indicator that the object is being mapped in 3D if it has valid position
-                if (detection.position_3d && Array.isArray(detection.position_3d) && 
+                if (detection.position_3d && Array.isArray(detection.position_3d) &&
                     !detection.position_3d.every(v => v === 0)) {
                     const indicator = document.createElement('div');
                     indicator.style.position = 'absolute';
@@ -590,10 +590,10 @@ function updateDetectionInfo(detections) {
                     indicator.title = `3D Position: X=${detection.position_3d[0].toFixed(2)}, Y=${detection.position_3d[1].toFixed(2)}, Z=${detection.position_3d[2].toFixed(2)}`;
                     boxDiv.appendChild(indicator);
                 }
-                
+
                 // Add to video container
                 videoContainer.appendChild(boxDiv);
-                
+
                 console.log(`Drawing bbox for ${label}: x1=${x1}, y1=${y1}, x2=${x2}, y2=${y2}, position_3d=${JSON.stringify(detection.position_3d)}`);
             } catch (error) {
                 console.error(`Error drawing bounding box for detection ${index}:`, error);
@@ -602,7 +602,7 @@ function updateDetectionInfo(detections) {
             console.warn(`Detection ${index} missing valid bbox:`, detection.bbox);
         }
     });
-    
+
     // Update detection info element with labels if enabled
     if (showLabels) {
         detectionInfoElement.innerHTML = html;
@@ -622,29 +622,29 @@ function clearDetections() {
         const existingBoxes = videoContainer.querySelectorAll('.detection-box');
         existingBoxes.forEach(box => box.remove());
     }
-    
+
     // Clear detection info
     if (detectionInfoElement) {
         detectionInfoElement.innerHTML = '';
         detectionInfoElement.style.display = 'none';
     }
-    
+
     // Clear the stream view image
     if (streamView) {
         streamView.src = '';
         streamView.style.display = 'none';
     }
-    
+
     // Clear lastDetections array
     lastDetections = [];
-    
+
     // Reset FPS counter
     frameCount = 0;
     fps = 0;
     if (fpsCounter) {
         fpsCounter.textContent = '0 FPS';
     }
-    
+
     console.log('Cleared all detections from UI');
 }
 
@@ -676,12 +676,12 @@ function generateConnectionQR() {
         showStatusMessage('error', 'Server not connected. Please wait for server connection.');
         return;
     }
-    
+
     if (!isMac) {
         showStatusMessage('warning', 'QR code generation is only available on macOS');
         return;
     }
-    
+
     // Show loading state
     qrCodeContainer.innerHTML = `
         <div class="loading-indicator">
@@ -689,7 +689,7 @@ function generateConnectionQR() {
             <span>Generating QR code...</span>
         </div>
     `;
-    
+
     // Fetch QR code from server
     fetch('/api/qrcode')
         .then(response => {
@@ -723,18 +723,18 @@ function displayQRCode(data) {
         showStatusMessage('error', 'Invalid QR code data');
         return;
     }
-    
+
     // Display the QR code
     qrCodeContainer.innerHTML = `
         <img src="data:image/png;base64,${data.qr_code}" alt="Connection QR Code">
     `;
-    
+
     // Update instructions
     qrInstructions.innerHTML = `
         <span>Scan with your iPhone camera</span><br>
         <small>Or open this URL: ${data.url || window.location.origin}</small>
     `;
-    
+
     showStatusMessage('success', 'QR code generated successfully! Scan with your iPhone camera to connect.');
 }
 
@@ -745,12 +745,12 @@ function startFpsCounter() {
     setInterval(() => {
         const now = Date.now();
         const elapsed = (now - lastFpsUpdate) / 1000;
-        
+
         // Calculate FPS
         if (elapsed > 0.5) {
             fps = Math.round(frameCount / elapsed);
             fpsCounter.textContent = `${fps} FPS`;
-            
+
             frameCount = 0;
             lastFpsUpdate = now;
         }

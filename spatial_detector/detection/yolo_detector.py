@@ -1,4 +1,3 @@
-import os
 from functools import lru_cache
 
 import torch
@@ -120,7 +119,7 @@ class YOLODetector:
             detections = []
             for result in results:
                 boxes = result.boxes
-                for i, box in enumerate(boxes):
+                for _, box in enumerate(boxes):
                     # Get bounding box
                     x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
 

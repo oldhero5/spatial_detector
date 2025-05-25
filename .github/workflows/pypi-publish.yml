@@ -18,48 +18,48 @@ jobs:
     - uses: actions/checkout@v3
       with:
         fetch-depth: 0  # Fetch all history for changelog generation
-    
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.x'
-    
+
     - name: Install UV
       run: |
         # Create directory for UV
         mkdir -p $HOME/.local/bin
         echo "$HOME/.local/bin" >> $GITHUB_PATH
-        
+
         # Download and install UV using pip
         pip install uv
-        
+
         # Verify installation
         uv --version
-    
+
     - name: Install dependencies
       run: |
         python -m pip install build hatchling twine
-    
+
     - name: Extract version from tag
       id: get_version
       run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_ENV
-    
+
     - name: Update version in pyproject.toml
       run: |
         sed -i "s/version = \"[0-9]*\.[0-9]*\.[0-9]*\"/version = \"$VERSION\"/" pyproject.toml
         cat pyproject.toml | grep version
-    
+
     - name: Build package
       run: |
         python -m build
-    
+
     - name: Publish package
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
         user: __token__
         password: ${{ secrets.PYPI_API_TOKEN }}
         skip_existing: true
-    
+
     - name: Read release notes file
       id: release_notes
       if: hashFiles('RELEASE_NOTES.md') != ''
@@ -68,7 +68,7 @@ jobs:
         echo "NOTES<<EOF" >> $GITHUB_ENV
         echo "$NOTES" >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
-    
+
     - name: Extract changelog notes
       id: extract_changelog
       run: |
@@ -80,7 +80,7 @@ jobs:
           echo "$NOTES" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
         fi
-    
+
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
       with:
@@ -89,11 +89,11 @@ jobs:
           dist/*.tar.gz
         body: |
           # Spatial Detector v${{ env.VERSION }}
-          
+
           ${{ hashFiles('RELEASE_NOTES.md') != '' && env.NOTES || format('Release of version {0}', env.VERSION) }}
-          
+
           ## What's Changed
-          
+
           ${{ env.CHANGELOG_NOTES }}
-          
+
           Full Changelog: https://github.com/${{ github.repository }}/commits/v${{ env.VERSION }}

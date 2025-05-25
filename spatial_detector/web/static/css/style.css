@@ -9,18 +9,18 @@
     --secondary-dark: #27ae60;
     --accent-color: #e74c3c;
     --accent-hover: #ff6b5e;
-    
+
     /* Dark Mode Colors */
     --bg-dark: #1a1e24;  /* Main dark background */
     --bg-darker: #141619; /* Darker elements */
     --bg-medium: #252a33; /* Medium dark elements */
     --bg-light: #2d343f;  /* Lighter dark elements */
-    
+
     /* Text Colors */
     --text-primary: #ecf0f1; /* Primary text color (white) */
     --text-secondary: #bdc3c7; /* Secondary text (light gray) */
     --text-muted: #7f8c8d;  /* Muted text (darker gray) */
-    
+
     /* UI Elements */
     --border-color: #3d4654;
     --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);

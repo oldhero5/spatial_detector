@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 import argparse
-import os
 import sys
 import time
 
 import cv2
-import numpy as np
 import torch
 
 from spatial_detector.depth import MiDaSDepthEstimator

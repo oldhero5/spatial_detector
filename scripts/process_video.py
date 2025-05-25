@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
+"""Process video files with 3D object detection."""
 import argparse
 import os
 import sys
 
-import cv2
-
 # Add parent directory to path to import modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.depth.midas_depth import MiDaSDepthEstimator
-from src.detection.yolo_detector import YOLODetector
-from src.projection.camera_model import PinholeCamera
-from src.visualization.visualizer import Visualizer
+import cv2  # noqa: E402
+
+from spatial_detector.depth import MiDaSDepthEstimator  # noqa: E402
+from spatial_detector.detection import YOLODetector  # noqa: E402
+from spatial_detector.projection import PinholeCamera  # noqa: E402
+from spatial_detector.visualization import Visualizer  # noqa: E402
 
 
 def main():
@@ -66,7 +67,7 @@ def main():
         # Update progress
         frame_count += 1
         print(
-            f"Processing frame {frame_count}/{total_frames} ({frame_count/total_frames*100:.1f}%)",
+            f"Processing frame {frame_count}/{total_frames} ({frame_count / total_frames * 100:.1f}%)",
             end="\r",
         )
 

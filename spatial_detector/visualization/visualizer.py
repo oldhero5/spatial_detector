@@ -65,7 +65,7 @@ class Visualizer:
                     continue
 
                 try:
-                    x1, y1, x2, y2 = [int(float(v)) for v in bbox]
+                    x1, y1, x2, y2 = (int(float(v)) for v in bbox)
                 except (ValueError, TypeError) as e:
                     print(f"Error converting bbox values: {e}")
                     continue
@@ -99,7 +99,7 @@ class Visualizer:
                 position_3d = detection.get("position_3d")
                 if position_3d is not None and len(position_3d) >= 3:
                     try:
-                        X, Y, Z = [float(v) for v in position_3d[:3]]
+                        X, Y, Z = (float(v) for v in position_3d[:3])
                         if not any(np.isnan([X, Y, Z])):
                             depth_info = f" {Z:.1f}m"
                             label_text += depth_info

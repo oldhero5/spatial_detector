@@ -1,6 +1,6 @@
 /**
  * ConnectionManager - Handles all WebSocket communication for Spatial Detector
- * 
+ *
  * Features:
  * - Automatic reconnection with exponential backoff
  * - Event-based architecture
@@ -35,7 +35,7 @@ class ConnectionManager extends EventTarget {
             }
 
             console.log('Connecting to server...');
-            
+
             // Create socket connection
             this.socket = io(this.url, {
                 reconnection: false, // We'll handle reconnection manually
@@ -45,10 +45,10 @@ class ConnectionManager extends EventTarget {
 
             // Setup event handlers
             this.setupSocketHandlers();
-            
+
             // Wait for connection
             await this.waitForConnection();
-            
+
         } catch (error) {
             console.error('Connection failed:', error);
             this.dispatchEvent(new CustomEvent('error', { detail: error }));
@@ -65,13 +65,13 @@ class ConnectionManager extends EventTarget {
             this.connected = true;
             this.reconnectAttempts = 0;
             this.reconnectDelay = 1000;
-            
+
             // Clear any pending reconnect
             if (this.reconnectTimer) {
                 clearTimeout(this.reconnectTimer);
                 this.reconnectTimer = null;
             }
-            
+
             this.dispatchEvent(new Event('connected'));
         });
 
@@ -79,7 +79,7 @@ class ConnectionManager extends EventTarget {
             console.log('Disconnected from server:', reason);
             this.connected = false;
             this.dispatchEvent(new CustomEvent('disconnected', { detail: reason }));
-            
+
             // Attempt reconnection unless explicitly disconnected
             if (reason !== 'io client disconnect') {
                 this.scheduleReconnect();
@@ -167,7 +167,7 @@ class ConnectionManager extends EventTarget {
         );
 
         console.log(`Reconnecting in ${delay / 1000} seconds... (attempt ${this.reconnectAttempts})`);
-        
+
         this.reconnectTimer = setTimeout(() => {
             this.connect();
         }, delay);
