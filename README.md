@@ -6,6 +6,11 @@
 
 A Python package for 3D object detection and spatial mapping using a webcam, combining YOLO object detection with monocular depth estimation.
 
+<div align="center">
+  <img src="docs/screenshots/spatial_detector_demo.png" alt="Spatial Detector Demo" width="80%">
+  <p><em>Spatial Detector in action: 2D object detection with 3D mapping visualization</em></p>
+</div>
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -14,6 +19,7 @@ A Python package for 3D object detection and spatial mapping using a webcam, com
 - [Quick Start](#quick-start)
 - [Usage](#usage)
   - [Command Line Interface](#command-line-interface)
+  - [Web Interface](#web-interface)
   - [Python API](#python-api)
   - [Controls](#controls)
 - [Architecture](#architecture)
@@ -30,7 +36,7 @@ A Python package for 3D object detection and spatial mapping using a webcam, com
 
 ## Overview
 
-Spatial Detector combines state-of-the-art object detection with monocular depth estimation to create a 3D representation of objects in your environment using only a standard webcam. It provides both a command-line interface for interactive use and a Python API for integration into your own applications.
+Spatial Detector combines state-of-the-art object detection with monocular depth estimation to create a 3D representation of objects in your environment using only a standard webcam or iPhone camera. It provides a user-friendly web interface, a desktop command-line application, and a Python API for integration into your own applications.
 
 The project uses YOLOv8 for object detection and MiDaS for depth estimation, with optimizations for both Apple Silicon (M1/M2) through Metal Performance Shaders and NVIDIA GPUs through CUDA.
 
@@ -43,6 +49,13 @@ The project uses YOLOv8 for object detection and MiDaS for depth estimation, wit
 - **Real-time Visualization**: See depth maps and object positions interactively
 - **Top-down View**: Get a bird's eye perspective of your environment
 
+### User Interface Options
+- **User-Friendly Web Interface**: Modern, responsive web app for easy use
+- **iPhone Camera Support**: Stream directly from iPhone cameras
+- **Interactive 3D Visualization**: Three.js-based 3D view with controls
+- **Setup Wizard**: Guided setup process for new users
+- **Desktop Application**: Traditional OpenCV-based UI
+
 ### Technical Features
 - **Hardware Acceleration**: Optimized for:
   - Apple Silicon (M1/M2) chips using Metal Performance Shaders (MPS)
@@ -51,6 +64,9 @@ The project uses YOLOv8 for object detection and MiDaS for depth estimation, wit
 - **Depth Calibration**: Tools for accurate real-world measurements
 - **Interactive Controls**: Toggle visualizations and adjust settings in real-time
 - **Persistence and Tracking**: Follow objects as they move through your space
+- **Spatial Mapping**: Create top-down views of your environment with detected objects
+- **WebSocket/Socket.IO**: Real-time communication between client and server
+- **QR Code Pairing**: Simple device connection for mobile devices
 
 ## Installation
 
@@ -59,14 +75,23 @@ The project uses YOLOv8 for object detection and MiDaS for depth estimation, wit
 - [PyTorch](https://pytorch.org/get-started/locally/) 1.13 or later
 - OpenCV 4.5 or later
 
+<div align="center">
+  <img src="docs/screenshots/prerequisites.png" alt="Prerequisites" width="70%">
+  <p><em>Development environment setup with required dependencies</em></p>
+</div>
+
 ### Option 1: Install from PyPI (Recommended)
 
 ```bash
-# Install with standard pip
+# Install base package with standard pip
 pip install spatial-detector
 
 # Or use UV for faster installation
 uv pip install spatial-detector
+
+# Install with web UI support
+pip install "spatial-detector[web]"
+uv pip install "spatial-detector[web]"
 ```
 
 ### Option 2: Install from Source
@@ -76,30 +101,63 @@ uv pip install spatial-detector
 git clone https://github.com/oldhero5/spatial-detector.git
 cd spatial-detector
 
-# Install with standard pip
+# Install base package
 pip install -e .
-
-# Or use UV for faster installation
 uv pip install -e .
+
+# Install with web UI support
+pip install -e ".[web]"
+uv pip install -e ".[web]"
+
+# Install with all development dependencies
+pip install -e ".[dev,web]"
+uv pip install -e ".[dev,web]"
 ```
+
+<div align="center">
+  <img src="docs/screenshots/installation.png" alt="Installation" width="70%">
+  <p><em>Successful installation with all dependencies loaded</em></p>
+</div>
 
 ## Quick Start
 
-After installation, run the webcam application with default settings:
+After installation, run one of the applications with default settings:
 
 ```bash
+# Start desktop webcam application
 spatial-detector
+
+# Start web interface (including iPhone support)
+spatial-detector-web
 ```
 
-This will:
+The desktop application will:
 1. Access your default webcam
 2. Load the lightweight YOLOv8n model
 3. Initialize the MiDaS depth estimator
 4. Show both the main detection view and a top-down spatial map
 
+<div align="center">
+  <img src="docs/screenshots/desktop_app.png" alt="Desktop Application" width="70%">
+  <p><em>Desktop application showing 2D detection with depth visualization</em></p>
+</div>
+
+The web interface will:
+1. Start a web server on http://localhost:5011
+2. Provide a user-friendly interface accessible from any browser
+3. Support iPhone camera streaming via QR code pairing
+4. Offer enhanced 3D visualization with interactive controls
+
+<div align="center">
+  <img src="docs/screenshots/web_interface.png" alt="Web Interface" width="70%">
+  <p><em>Web interface showing detection and 3D mapping with interactive controls</em></p>
+</div>
+
 ## Usage
 
 ### Command Line Interface
+
+#### Desktop Application
 
 The CLI provides a flexible interface for using Spatial Detector with various options:
 
@@ -130,6 +188,78 @@ spatial-detector --calibration camera_calibration.json --depth-calibration depth
 # Customize room dimensions for mapping
 spatial-detector --room-width 10.0 --room-depth 8.0
 ```
+
+#### Web Interface
+
+The web interface can be customized with these options:
+
+```bash
+# Start web server with default settings (localhost:5000)
+spatial-detector-web
+
+# Specify host and port
+spatial-detector-web --host 0.0.0.0 --port 8080
+
+# Enable debug mode for development
+spatial-detector-web --debug
+
+# Specify custom template and static file locations
+spatial-detector-web --templates /path/to/templates --static /path/to/static
+```
+
+The web interface is accessible at `http://localhost:5011` by default (or the host:port you specify).
+
+### Web Interface
+
+The web-based user interface offers a more user-friendly way to use Spatial Detector:
+
+<div align="center">
+  <img src="docs/screenshots/web_ui_components.png" alt="Web UI Components" width="70%">
+  <p><em>Web UI components showing control panel, visualization area, and 3D map</em></p>
+</div>
+
+#### Features
+
+- **Setup Wizard**: Guided onboarding for new users
+- **Device Selection**: Support for webcams and iPhone cameras
+- **Real-time Visualization**: Live detection results with depth information
+- **Interactive 3D Map**: Three.js-based spatial visualization
+- **Project Management**: Save and load project states
+- **Calibration Tools**: User-friendly calibration workflow
+- **Mobile Responsiveness**: Works on desktop and mobile browsers
+
+#### iPhone Integration
+
+To use your iPhone as a camera source:
+
+1. Start the web server with `spatial-detector-web`
+2. Open the web interface in your browser
+3. Click "Connect to iPhone" or select iPhone in the setup wizard
+4. Scan the generated QR code with your iPhone camera
+5. Follow the prompts on your iPhone to allow camera access
+6. Start using your iPhone as a high-quality camera source
+
+<div align="center">
+  <img src="docs/screenshots/iphone_integration.png" alt="iPhone Integration" width="70%">
+  <p><em>iPhone camera streaming via QR code pairing process</em></p>
+</div>
+
+The iPhone integration uses web technologies for low-latency, high-quality video streaming.
+
+#### 3D Visualization
+
+The web interface includes an advanced 3D visualization system:
+
+<div align="center">
+  <img src="docs/screenshots/3d_visualization.png" alt="3D Visualization" width="70%">
+  <p><em>3D visualization showing detected objects in a spatial environment</em></p>
+</div>
+
+- **Interactive Controls**: Rotate, pan, and zoom the 3D view
+- **Object Tracking**: Track detected objects in 3D space
+- **Custom Rendering**: Configurable colors and visualization styles
+- **Grid System**: Reference grid for scale and orientation
+- **3D Export**: Export the spatial map for use in other applications
 
 Full list of CLI options:
 
@@ -218,6 +348,8 @@ cv2.destroyAllWindows()
 
 ### Controls
 
+#### Desktop Application Controls
+
 When using the CLI application, the following keyboard controls are available:
 
 | Key | Function |
@@ -230,6 +362,34 @@ When using the CLI application, the following keyboard controls are available:
 | `+`/`-` | Adjust calibration distance (in calibration mode) |
 | `space` | Set calibration point (in calibration mode) |
 | `s` | Save depth calibration |
+
+#### Web Interface Controls
+
+The web interface provides the following interactive controls:
+
+**Camera Controls:**
+- Start/Stop Camera: Toggle webcam capture
+- Select Camera: Choose from available webcams
+- Connect to iPhone: Generate QR code for iPhone connection
+
+**Visualization Controls:**
+- Show/Hide Labels: Toggle object labels
+- Show/Hide Depth Map: Toggle depth visualization
+- Show/Hide Grid: Toggle 3D grid
+
+**Map Controls:**
+- Show/Hide Map: Toggle 3D map view
+- Reset View: Return to default camera position
+- Export 3D Model: Export the spatial map (when available)
+
+**Calibration Controls:**
+- Start Calibration: Enter calibration mode
+- Save Calibration: Save current calibration
+
+**Project Controls:**
+- New Project: Start a new spatial mapping project
+- Save Project: Save current project state
+- Load Project: Load a previously saved project
 
 ## Architecture
 
@@ -261,10 +421,16 @@ Spatial Detector follows a modular design with these core components:
    - Draws bounding boxes and labels
    - Renders depth maps and other visualizations
 
-7. **CLI Application**: Ties everything together in an interactive interface
+7. **Web Interface**: Provides a user-friendly web-based UI
+   - Supports iPhone camera streaming
+   - Interactive 3D visualization with Three.js
+   - Project management and calibration wizard
+
+8. **CLI Application**: Ties everything together in an interactive interface
 
 ### Data Flow
 
+#### Desktop Application Flow
 1. Image acquisition from webcam
 2. Parallel processing:
    - Object detection (YOLOv8)
@@ -274,20 +440,41 @@ Spatial Detector follows a modular design with these core components:
 5. Spatial mapping and object tracking
 6. Visualization and user interaction
 
+#### Web Interface Flow
+1. Image acquisition from webcam or iPhone camera
+2. Image streaming via WebSocket/WebRTC
+3. Server-side processing:
+   - Object detection (YOLOv8)
+   - Depth estimation (MiDaS)
+   - 3D projection and mapping
+4. Real-time results pushed to client
+5. Client-side 3D visualization with Three.js
+6. Interactive controls and project management
+
 ## Calibration
 
 For accurate real-world measurements, Spatial Detector includes a calibration workflow:
 
+<div align="center">
+  <img src="docs/screenshots/calibration_mode.png" alt="Calibration Mode" width="70%">
+  <p><em>Calibration interface showing distance adjustment and crosshair alignment</em></p>
+</div>
+
 ### Depth Calibration
 
-1. Enter calibration mode by pressing `c`
+1. Enter calibration mode by pressing `c` or clicking the "Start Calibration" button in the web interface
 2. Place an object at a known distance from the camera (e.g., 1 meter)
 3. Use `+`/`-` keys to adjust the displayed distance to match the actual distance
 4. Align the object with the center crosshair
 5. Press `space` to set the calibration point
-6. Press `s` to save the calibration to a file
+6. Press `s` or click "Save Calibration" to save the calibration to a file
 
 Calibration is saved to `depth_calibration.json` by default or to the file specified with `--depth-calibration`.
+
+<div align="center">
+  <img src="docs/screenshots/depth_calibration.png" alt="Depth Calibration Results" width="70%">
+  <p><em>Depth calibration results showing improved distance measurements</em></p>
+</div>
 
 ### Camera Calibration (Advanced)
 
@@ -304,6 +491,11 @@ For even more accurate 3D positioning, you can provide a camera calibration file
    }
    ```
 3. Provide the file path using the `--calibration` option
+
+<div align="center">
+  <img src="docs/screenshots/camera_calibration.png" alt="Camera Calibration" width="70%">
+  <p><em>Advanced camera calibration with intrinsic parameters visualization</em></p>
+</div>
 
 ## API Reference
 
@@ -505,6 +697,11 @@ For detailed release management instructions, see [RELEASE_GUIDE.md](RELEASE_GUI
 
 ## Troubleshooting
 
+<div align="center">
+  <img src="docs/screenshots/troubleshooting.png" alt="Troubleshooting" width="70%">
+  <p><em>Troubleshooting interface showing error messages and diagnostics</em></p>
+</div>
+
 ### Common Issues
 
 #### Installation Problems
@@ -512,6 +709,10 @@ For detailed release management instructions, see [RELEASE_GUIDE.md](RELEASE_GUI
 - **PyTorch installation fails**: Make sure you're installing the correct version for your system. Visit [PyTorch's installation page](https://pytorch.org/get-started/locally/) for system-specific instructions.
 
 - **CUDA errors**: If using an NVIDIA GPU, ensure your CUDA drivers are up to date.
+
+- **Web package installation fails**: If you see errors related to "pywebrtc not found", use `uv pip install -e ".[web]"` with our latest version which removes this dependency.
+
+- **Missing modules**: If you encounter "ImportError: cannot import name 'SpatialMap'" or similar, ensure you're using the latest version which includes all required modules.
 
 #### Runtime Issues
 
@@ -523,14 +724,35 @@ For detailed release management instructions, see [RELEASE_GUIDE.md](RELEASE_GUI
 
 - **Camera not found**: Check your camera index (--camera option) and permissions.
 
+- **"NoneType object has no attribute pixel_to_3d"**: This error occurs when the camera model is not initialized properly. Restart the application or switch to a different camera source.
+
+- **No objects appear in 3D map**: Ensure depth values are valid and make sure the objects are within the detection range. Try calibrating your depth sensor for better accuracy.
+
+- **WebSocket errors**: If you see WebSocket connection issues in the browser console, check for network firewall settings or try a different browser.
+
+- **Bounding boxes not showing**: This could be due to CSS rendering issues. Try refreshing the page or adjusting the browser zoom level.
+
 ### Performance Optimization
 
-- For Apple Silicon: Make sure to use the MPS backend (--device mps)
-- For NVIDIA GPUs: Ensure CUDA is properly installed (--device cuda)
-- Use an appropriate YOLO model size for your hardware:
+<div align="center">
+  <img src="docs/screenshots/performance_optimization.png" alt="Performance Optimization" width="70%">
+  <p><em>Performance monitoring dashboard showing optimization opportunities</em></p>
+</div>
+
+- **Model caching**: The latest version includes model caching to improve startup time and reduce memory usage for repeated initializations.
+
+- **For Apple Silicon**: Make sure to use the MPS backend (--device mps)
+
+- **For NVIDIA GPUs**: Ensure CUDA is properly installed (--device cuda)
+
+- **Use an appropriate YOLO model size for your hardware**:
   - Low-end: yolov8n.pt
   - Mid-range: yolov8s.pt
   - High-end: yolov8m.pt or yolov8l.pt
+  
+- **Reduce processing resolution**: Lower the camera resolution for faster processing: `--width 640 --height 480`
+
+- **WebSocket optimization**: The latest version includes optimized WebSocket communication to reduce latency and improve real-time performance.
 
 ## License
 

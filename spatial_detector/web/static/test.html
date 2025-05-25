@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MediaDevices Test</title>
+</head>
+<body>
+    <h1>MediaDevices API Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        const results = document.getElementById('results');
+        
+        function log(message) {
+            const p = document.createElement('p');
+            p.textContent = message;
+            results.appendChild(p);
+        }
+        
+        // Test 1: Check protocol
+        log('Protocol: ' + window.location.protocol);
+        
+        // Test 2: Check if navigator exists
+        log('navigator exists: ' + (typeof navigator !== 'undefined'));
+        
+        // Test 3: Check if mediaDevices exists
+        log('navigator.mediaDevices exists: ' + (navigator && navigator.mediaDevices ? 'yes' : 'no'));
+        
+        // Test 4: Check specific methods
+        if (navigator && navigator.mediaDevices) {
+            log('getUserMedia exists: ' + (typeof navigator.mediaDevices.getUserMedia === 'function'));
+            log('enumerateDevices exists: ' + (typeof navigator.mediaDevices.enumerateDevices === 'function'));
+        }
+        
+        // Test 5: Check browser info
+        log('User Agent: ' + navigator.userAgent);
+        
+        // Test 6: Check if we're in a secure context
+        log('Secure context: ' + window.isSecureContext);
+        
+        // Test 7: Try to enumerate devices
+        if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+            navigator.mediaDevices.enumerateDevices()
+                .then(devices => {
+                    log('Found ' + devices.length + ' devices');
+                    devices.forEach(device => {
+                        log('- ' + device.kind + ': ' + (device.label || 'No label'));
+                    });
+                })
+                .catch(err => {
+                    log('Error enumerating devices: ' + err);
+                });
+        }
+    </script>
+</body>
+</html>
