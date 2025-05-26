@@ -53,12 +53,72 @@ coverage.xml
 
 # Environments
 .env
+.env.*
+!.env.example
 .venv
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
+
+# Security - Private Keys and Certificates
+*.pem
+*.key
+*.cert
+*.crt
+*.cer
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.pub
+private_key*
+public_key*
+id_rsa*
+id_dsa*
+id_ecdsa*
+id_ed25519*
+*.ppk
+
+# Security - Secrets and Tokens
+.secrets
+.secrets/
+secrets/
+*.secret
+*_secret*
+*_token*
+*_api_key*
+.env.local
+.env.development
+.env.test
+.env.production
+.env.staging
+
+# Security - Configuration with potential secrets
+config/secrets*
+config/credentials*
+credentials*
+.credentials/
+.aws/
+.gcp/
+.azure/
+
+# Security - Session and temporary files
+*.session
+*.cookie
+.sessions/
+sessions/
+tmp/
+temp/
+
+# Security - Password files
+*.pass
+*.password
+passwords.txt
+passwd*
+.htpasswd
+.netrc
 
 # VS Code
 .vscode/
